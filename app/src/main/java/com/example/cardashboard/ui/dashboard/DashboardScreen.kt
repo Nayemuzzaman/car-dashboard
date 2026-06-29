@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,32 +53,68 @@ private data class DashboardMetric(
     val label: String,
     val value: String,
     val helper: String,
-    val accent: Color = DashboardAccent
+    val accent: Color? = null
 )
 
 private data class DashboardWarningState(
     val label: String,
-    val active: Boolean
+    val active: Boolean,
+    val helper: String
 )
+
+private enum class DriveMode(
+    val label: String,
+    val accent: Color
+) {
+    Eco("Eco", Color(0xFF22C55E)),
+    Comfort("Comfort", DashboardAccent),
+    Sport("Sport", Color(0xFFF97316))
+}
 
 private val mockMetrics = listOf(
     DashboardMetric("RPM", "2,350", "x1000", Color(0xFFA78BFA)),
     DashboardMetric("Fuel", "68%", "Range 420 km", Color(0xFF22C55E)),
-    DashboardMetric("Gear", "D", "Comfort shift", DashboardAccent),
+    DashboardMetric("Gear", "D", "Comfort shift"),
     DashboardMetric("Temp", "91 C", "Engine stable", DashboardWarning)
 )
 
-private val mockWarnings = listOf(
-    DashboardWarningState("Seatbelt", true),
-    DashboardWarningState("Door", false),
-    DashboardWarningState("Tire", false),
-    DashboardWarningState("Engine", false)
+private val mockWarningScenarios = listOf(
+    listOf(
+        DashboardWarningState("Seatbelt", true, "Driver belt open"),
+        DashboardWarningState("Door", false, "All doors closed"),
+        DashboardWarningState("Tire Pressure", false, "Nominal"),
+        DashboardWarningState("Check Engine", false, "No fault")
+    ),
+    listOf(
+        DashboardWarningState("Seatbelt", false, "Secured"),
+        DashboardWarningState("Door", true, "Rear left open"),
+        DashboardWarningState("Tire Pressure", true, "Front right low"),
+        DashboardWarningState("Check Engine", false, "No fault")
+    ),
+    listOf(
+        DashboardWarningState("Seatbelt", false, "Secured"),
+        DashboardWarningState("Door", false, "All doors closed"),
+        DashboardWarningState("Tire Pressure", false, "Nominal"),
+        DashboardWarningState("Check Engine", true, "Service soon")
+    )
 )
 
 private val mockSpeedSequence = listOf(0, 18, 42, 67, 86, 112, 98, 124, 76, 54)
 
 @Composable
 fun DashboardScreen(modifier: Modifier = Modifier) {
+    var selectedMode by remember { mutableStateOf(DriveMode.Comfort) }
+    var warnings by remember { mutableStateOf(mockWarningScenarios.first()) }
+
+    LaunchedEffect(Unit) {
+        var scenarioIndex = 0
+        while (true) {
+            delay(3_200)
+            scenarioIndex = (scenarioIndex + 1) % mockWarningScenarios.size
+            warnings = mockWarningScenarios[scenarioIndex]
+        }
+    }
+
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -88,6 +125,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
+                            selectedMode.accent.copy(alpha = 0.16f),
                             MaterialTheme.colorScheme.background,
                             Color(0xFF0B1220)
                         )
@@ -98,22 +136,35 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
             val wideLayout = maxWidth >= 720.dp
 
             if (wideLayout) {
-                LandscapeDashboardLayout()
+                LandscapeDashboardLayout(
+                    selectedMode = selectedMode,
+                    warnings = warnings,
+                    onModeSelected = { selectedMode = it }
+                )
             } else {
-                PortraitDashboardLayout()
+                PortraitDashboardLayout(
+                    selectedMode = selectedMode,
+                    warnings = warnings,
+                    onModeSelected = { selectedMode = it }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun LandscapeDashboardLayout() {
+private fun LandscapeDashboardLayout(
+    selectedMode: DriveMode,
+    warnings: List<DashboardWarningState>,
+    onModeSelected: (DriveMode) -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.medium),
         verticalAlignment = Alignment.CenterVertically
     ) {
         SpeedPanel(
+            accent = selectedMode.accent,
             modifier = Modifier
                 .weight(1.25f)
                 .fillMaxHeight()
@@ -124,7 +175,7 @@ private fun LandscapeDashboardLayout() {
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
         ) {
-            MetricGrid(modifier = Modifier.weight(1f))
+            MetricGrid(accent = selectedMode.accent, modifier = Modifier.weight(1f))
             OdometerPanel(modifier = Modifier.fillMaxWidth())
         }
         Column(
@@ -133,14 +184,22 @@ private fun LandscapeDashboardLayout() {
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
         ) {
-            WarningPanel(modifier = Modifier.weight(1f))
-            DriveModePanel(modifier = Modifier.fillMaxWidth())
+            WarningPanel(warnings = warnings, modifier = Modifier.weight(1f))
+            DriveModePanel(
+                selectedMode = selectedMode,
+                onModeSelected = onModeSelected,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
 
 @Composable
-private fun PortraitDashboardLayout() {
+private fun PortraitDashboardLayout(
+    selectedMode: DriveMode,
+    warnings: List<DashboardWarningState>,
+    onModeSelected: (DriveMode) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -148,19 +207,27 @@ private fun PortraitDashboardLayout() {
         verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
     ) {
         SpeedPanel(
+            accent = selectedMode.accent,
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 280.dp)
         )
-        MetricGrid(modifier = Modifier.fillMaxWidth())
+        MetricGrid(accent = selectedMode.accent, modifier = Modifier.fillMaxWidth())
         OdometerPanel(modifier = Modifier.fillMaxWidth())
-        WarningPanel(modifier = Modifier.fillMaxWidth())
-        DriveModePanel(modifier = Modifier.fillMaxWidth())
+        WarningPanel(warnings = warnings, modifier = Modifier.fillMaxWidth())
+        DriveModePanel(
+            selectedMode = selectedMode,
+            onModeSelected = onModeSelected,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
 @Composable
-private fun SpeedPanel(modifier: Modifier = Modifier) {
+private fun SpeedPanel(
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
     var speed by remember { mutableIntStateOf(mockSpeedSequence.first()) }
 
     LaunchedEffect(Unit) {
@@ -188,6 +255,7 @@ private fun SpeedPanel(modifier: Modifier = Modifier) {
                 SpeedGauge(
                     speed = speed,
                     maxSpeed = 220,
+                    accent = accent,
                     modifier = Modifier.size(260.dp)
                 )
             }
@@ -206,6 +274,7 @@ private fun SpeedPanel(modifier: Modifier = Modifier) {
 private fun SpeedGauge(
     speed: Int,
     maxSpeed: Int,
+    accent: Color,
     modifier: Modifier = Modifier
 ) {
     val targetProgress = (speed.coerceIn(0, maxSpeed).toFloat() / maxSpeed.toFloat())
@@ -237,14 +306,14 @@ private fun SpeedGauge(
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
             drawArc(
-                color = DashboardAccent,
+                color = accent,
                 startAngle = startAngle,
                 sweepAngle = gaugeSweep * animatedProgress,
                 useCenter = false,
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
             drawArc(
-                color = DashboardAccent.copy(alpha = 0.22f),
+                color = accent.copy(alpha = 0.22f),
                 startAngle = startAngle,
                 sweepAngle = gaugeSweep * animatedProgress,
                 useCenter = false,
@@ -274,7 +343,10 @@ private fun SpeedGauge(
 }
 
 @Composable
-private fun MetricGrid(modifier: Modifier = Modifier) {
+private fun MetricGrid(
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
@@ -283,21 +355,25 @@ private fun MetricGrid(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
         ) {
-            MetricTile(metric = mockMetrics[0], modifier = Modifier.weight(1f))
-            MetricTile(metric = mockMetrics[1], modifier = Modifier.weight(1f))
+            MetricTile(metric = mockMetrics[0], accent = accent, modifier = Modifier.weight(1f))
+            MetricTile(metric = mockMetrics[1], accent = accent, modifier = Modifier.weight(1f))
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
         ) {
-            MetricTile(metric = mockMetrics[2], modifier = Modifier.weight(1f))
-            MetricTile(metric = mockMetrics[3], modifier = Modifier.weight(1f))
+            MetricTile(metric = mockMetrics[2], accent = accent, modifier = Modifier.weight(1f))
+            MetricTile(metric = mockMetrics[3], accent = accent, modifier = Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun MetricTile(metric: DashboardMetric, modifier: Modifier = Modifier) {
+private fun MetricTile(
+    metric: DashboardMetric,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
     DashboardPanel(modifier = modifier.heightIn(min = 128.dp)) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -312,7 +388,7 @@ private fun MetricTile(metric: DashboardMetric, modifier: Modifier = Modifier) {
                 text = metric.value,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = metric.accent
+                color = metric.accent ?: accent
             )
             Text(
                 text = metric.helper,
@@ -340,14 +416,22 @@ private fun OdometerPanel(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun WarningPanel(modifier: Modifier = Modifier) {
+private fun WarningPanel(
+    warnings: List<DashboardWarningState>,
+    modifier: Modifier = Modifier
+) {
+    val activeWarningCount = warnings.count { it.active }
+
     DashboardPanel(modifier = modifier) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
         ) {
-            PanelHeader(title = "Warnings", value = "4 systems")
-            mockWarnings.forEach { warning ->
+            PanelHeader(
+                title = "Warnings",
+                value = if (activeWarningCount == 0) "All clear" else "$activeWarningCount active"
+            )
+            warnings.forEach { warning ->
                 WarningRow(warning)
             }
         }
@@ -361,11 +445,29 @@ private fun WarningRow(warning: DashboardWarningState) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = warning.label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.small),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(if (warning.active) DashboardWarning else Color(0xFF22C55E))
+            )
+            Column {
+                Text(
+                    text = warning.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = warning.helper,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = DashboardTextMuted
+                )
+            }
+        }
         Text(
             text = if (warning.active) "ON" else "OK",
             style = MaterialTheme.typography.labelMedium,
@@ -375,17 +477,27 @@ private fun WarningRow(warning: DashboardWarningState) {
 }
 
 @Composable
-private fun DriveModePanel(modifier: Modifier = Modifier) {
+private fun DriveModePanel(
+    selectedMode: DriveMode,
+    onModeSelected: (DriveMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
     DashboardPanel(modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)) {
-            PanelHeader(title = "Driving Mode", value = "Comfort")
+            PanelHeader(title = "Driving Mode", value = selectedMode.label)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.small)
             ) {
-                ModeChip(label = "Eco", selected = false, modifier = Modifier.weight(1f))
-                ModeChip(label = "Comfort", selected = true, modifier = Modifier.weight(1f))
-                ModeChip(label = "Sport", selected = false, modifier = Modifier.weight(1f))
+                DriveMode.entries.forEach { mode ->
+                    ModeChip(
+                        label = mode.label,
+                        selected = mode == selectedMode,
+                        accent = mode.accent,
+                        onClick = { onModeSelected(mode) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
@@ -395,21 +507,29 @@ private fun DriveModePanel(modifier: Modifier = Modifier) {
 private fun ModeChip(
     label: String,
     selected: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    Surface(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(if (selected) DashboardAccent else DashboardSurfaceHigh)
-            .padding(vertical = DashboardSpacing.small),
-        contentAlignment = Alignment.Center
+            .background(if (selected) accent else DashboardSurfaceHigh),
+        color = if (selected) accent else DashboardSurfaceHigh,
+        shape = RoundedCornerShape(8.dp),
+        onClick = onClick
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (selected) Color(0xFF03111D) else MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
+        Box(
+            modifier = Modifier.padding(vertical = DashboardSpacing.small),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (selected) Color(0xFF03111D) else MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
