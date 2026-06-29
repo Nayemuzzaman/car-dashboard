@@ -1,7 +1,10 @@
 package com.example.cardashboard.ui.dashboard
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -14,18 +17,24 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -37,6 +46,7 @@ import com.example.cardashboard.ui.theme.DashboardSurface
 import com.example.cardashboard.ui.theme.DashboardSurfaceHigh
 import com.example.cardashboard.ui.theme.DashboardTextMuted
 import com.example.cardashboard.ui.theme.DashboardWarning
+import kotlinx.coroutines.delay
 
 private data class DashboardMetric(
     val label: String,
@@ -63,6 +73,8 @@ private val mockWarnings = listOf(
     DashboardWarningState("Tire", false),
     DashboardWarningState("Engine", false)
 )
+
+private val mockSpeedSequence = listOf(0, 18, 42, 67, 86, 112, 98, 124, 76, 54)
 
 @Composable
 fun DashboardScreen(modifier: Modifier = Modifier) {
@@ -149,6 +161,17 @@ private fun PortraitDashboardLayout() {
 
 @Composable
 private fun SpeedPanel(modifier: Modifier = Modifier) {
+    var speed by remember { mutableIntStateOf(mockSpeedSequence.first()) }
+
+    LaunchedEffect(Unit) {
+        var speedIndex = 0
+        while (true) {
+            delay(1_600)
+            speedIndex = (speedIndex + 1) % mockSpeedSequence.size
+            speed = mockSpeedSequence[speedIndex]
+        }
+    }
+
     DashboardPanel(modifier = modifier) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -162,28 +185,11 @@ private fun SpeedPanel(modifier: Modifier = Modifier) {
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(230.dp)
-                        .clip(CircleShape)
-                        .border(12.dp, DashboardSurfaceHigh, CircleShape)
-                        .border(5.dp, DashboardAccent, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "86",
-                            style = MaterialTheme.typography.displayLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "km/h",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = DashboardTextMuted
-                        )
-                    }
-                }
+                SpeedGauge(
+                    speed = speed,
+                    maxSpeed = 220,
+                    modifier = Modifier.size(260.dp)
+                )
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -192,6 +198,77 @@ private fun SpeedPanel(modifier: Modifier = Modifier) {
                 SmallReadout(label = "Trip", value = "142.8 km")
                 SmallReadout(label = "Range", value = "420 km")
             }
+        }
+    }
+}
+
+@Composable
+private fun SpeedGauge(
+    speed: Int,
+    maxSpeed: Int,
+    modifier: Modifier = Modifier
+) {
+    val targetProgress = (speed.coerceIn(0, maxSpeed).toFloat() / maxSpeed.toFloat())
+    val animatedProgress by animateFloatAsState(
+        targetValue = targetProgress,
+        animationSpec = tween(durationMillis = 900),
+        label = "speedProgress"
+    )
+    val animatedSpeed by animateFloatAsState(
+        targetValue = speed.toFloat(),
+        animationSpec = tween(durationMillis = 900),
+        label = "speedNumber"
+    )
+
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokeWidth = 18.dp.toPx()
+            val gaugeSweep = 270f
+            val startAngle = 135f
+
+            drawArc(
+                color = DashboardSurfaceHigh,
+                startAngle = startAngle,
+                sweepAngle = gaugeSweep,
+                useCenter = false,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+            drawArc(
+                color = DashboardAccent,
+                startAngle = startAngle,
+                sweepAngle = gaugeSweep * animatedProgress,
+                useCenter = false,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+            drawArc(
+                color = DashboardAccent.copy(alpha = 0.22f),
+                startAngle = startAngle,
+                sweepAngle = gaugeSweep * animatedProgress,
+                useCenter = false,
+                style = Stroke(width = 34.dp.toPx(), cap = StrokeCap.Round)
+            )
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = animatedSpeed.toInt().toString(),
+                style = MaterialTheme.typography.displayLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "km/h",
+                style = MaterialTheme.typography.titleMedium,
+                color = DashboardTextMuted
+            )
+            Text(
+                text = "max $maxSpeed",
+                style = MaterialTheme.typography.labelMedium,
+                color = DashboardTextMuted
+            )
         }
     }
 }
