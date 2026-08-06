@@ -1,619 +1,533 @@
 package com.example.cardashboard.ui.dashboard
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.cardashboard.R
+import com.example.cardashboard.domain.model.ChargingState
+import com.example.cardashboard.domain.model.DriveMode
+import com.example.cardashboard.domain.model.EnergyState
+import com.example.cardashboard.domain.model.Gear
+import com.example.cardashboard.domain.model.Indicators
+import com.example.cardashboard.domain.model.SpeedUnit
+import com.example.cardashboard.domain.model.Temperatures
+import com.example.cardashboard.domain.model.TripData
+import com.example.cardashboard.domain.model.VehicleDataSourceKind
+import com.example.cardashboard.domain.model.VehicleDataState
+import com.example.cardashboard.domain.model.VehicleDataUnavailableReason
+import com.example.cardashboard.domain.model.VehicleState
+import com.example.cardashboard.ui.components.DashboardPanel
+import com.example.cardashboard.ui.components.DriveModeSelector
+import com.example.cardashboard.ui.components.EnergyPanel
+import com.example.cardashboard.ui.components.GearIndicator
+import com.example.cardashboard.ui.components.IndicatorCluster
+import com.example.cardashboard.ui.components.PanelHeader
+import com.example.cardashboard.ui.components.Readout
+import com.example.cardashboard.ui.components.RpmGauge
+import com.example.cardashboard.ui.components.SpeedGauge
+import com.example.cardashboard.ui.components.StatusHeader
+import com.example.cardashboard.ui.components.TemperaturePanel
+import com.example.cardashboard.ui.components.TripPanel
+import com.example.cardashboard.ui.components.distanceLabelRes
+import com.example.cardashboard.ui.format.DashboardFormat
 import com.example.cardashboard.ui.theme.CarDashboardTheme
-import com.example.cardashboard.ui.theme.DashboardAccent
 import com.example.cardashboard.ui.theme.DashboardSpacing
-import com.example.cardashboard.ui.theme.DashboardSurface
-import com.example.cardashboard.ui.theme.DashboardSurfaceHigh
-import com.example.cardashboard.ui.theme.DashboardTextMuted
-import com.example.cardashboard.ui.theme.DashboardWarning
-import kotlinx.coroutines.delay
+import com.example.cardashboard.ui.theme.LocalDashboardColors
+import java.time.LocalDateTime
 
-private data class DashboardMetric(
-    val label: String,
-    val value: String,
-    val helper: String,
-    val accent: Color? = null
-)
+const val DASHBOARD_ROOT_TAG = "dashboard_root"
+const val ODOMETER_TAG = "odometer_value"
+const val TRIP_RESET_CONFIRM_TAG = "trip_reset_confirm"
+const val LOADING_MESSAGE_TAG = "loading_message"
 
-private data class DashboardWarningState(
-    val label: String,
-    val active: Boolean,
-    val helper: String
-)
-
-private enum class DriveMode(
-    val label: String,
-    val accent: Color
-) {
-    Eco("Eco", Color(0xFF22C55E)),
-    Comfort("Comfort", DashboardAccent),
-    Sport("Sport", Color(0xFFF97316))
-}
-
-private val mockMetrics = listOf(
-    DashboardMetric("RPM", "2,350", "x1000", Color(0xFFA78BFA)),
-    DashboardMetric("Fuel", "68%", "Range 420 km", Color(0xFF22C55E)),
-    DashboardMetric("Gear", "D", "Comfort shift"),
-    DashboardMetric("Temp", "91 C", "Engine stable", DashboardWarning)
-)
-
-private val mockWarningScenarios = listOf(
-    listOf(
-        DashboardWarningState("Seatbelt", true, "Driver belt open"),
-        DashboardWarningState("Door", false, "All doors closed"),
-        DashboardWarningState("Tire Pressure", false, "Nominal"),
-        DashboardWarningState("Check Engine", false, "No fault")
-    ),
-    listOf(
-        DashboardWarningState("Seatbelt", false, "Secured"),
-        DashboardWarningState("Door", true, "Rear left open"),
-        DashboardWarningState("Tire Pressure", true, "Front right low"),
-        DashboardWarningState("Check Engine", false, "No fault")
-    ),
-    listOf(
-        DashboardWarningState("Seatbelt", false, "Secured"),
-        DashboardWarningState("Door", false, "All doors closed"),
-        DashboardWarningState("Tire Pressure", false, "Nominal"),
-        DashboardWarningState("Check Engine", true, "Service soon")
-    )
-)
-
-private val mockSpeedSequence = listOf(0, 18, 42, 67, 86, 112, 98, 124, 76, 54)
-
+/**
+ * The instrument cluster.
+ *
+ * Stateless on purpose: it takes a [DashboardUiState] and reports intents back, so it can be
+ * previewed and tested without a ViewModel, a repository or a running simulation.
+ */
 @Composable
-fun DashboardScreen(modifier: Modifier = Modifier) {
-    var selectedMode by remember { mutableStateOf(DriveMode.Comfort) }
-    var warnings by remember { mutableStateOf(mockWarningScenarios.first()) }
-
-    LaunchedEffect(Unit) {
-        var scenarioIndex = 0
-        while (true) {
-            delay(3_200)
-            scenarioIndex = (scenarioIndex + 1) % mockWarningScenarios.size
-            warnings = mockWarningScenarios[scenarioIndex]
-        }
-    }
+fun DashboardScreen(
+    uiState: DashboardUiState,
+    onToggleSpeedUnit: () -> Unit,
+    onDriveModeSelected: (DriveMode) -> Unit,
+    onRequestTripReset: () -> Unit,
+    onConfirmTripReset: () -> Unit,
+    onDismissTripReset: () -> Unit,
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = LocalDashboardColors.current
+    val driveMode = uiState.vehicleState?.driveMode ?: DriveMode.NORMAL
+    val accent = colors.accentFor(driveMode, MaterialTheme.colorScheme.primary)
 
     Surface(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .testTag(DASHBOARD_ROOT_TAG),
         color = MaterialTheme.colorScheme.background
     ) {
-        BoxWithConstraints(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            selectedMode.accent.copy(alpha = 0.16f),
-                            MaterialTheme.colorScheme.background,
-                            Color(0xFF0B1220)
-                        )
-                    )
-                )
-                .padding(DashboardSpacing.screenPadding)
+                // Nothing important may sit under the status bar, a notch or the gesture bar.
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(DashboardSpacing.screenPadding),
+            verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
         ) {
-            val wideLayout = maxWidth >= 720.dp
+            StatusHeader(
+                now = uiState.now,
+                isDemoData = uiState.isDemoData,
+                statusMessage = uiState.statusMessage(),
+                onOpenSettings = onOpenSettings
+            )
 
-            if (wideLayout) {
-                LandscapeDashboardLayout(
-                    selectedMode = selectedMode,
-                    warnings = warnings,
-                    onModeSelected = { selectedMode = it }
-                )
+            if (uiState.isLoading) {
+                LoadingMessage(modifier = Modifier.fillMaxWidth().weight(1f))
             } else {
-                PortraitDashboardLayout(
-                    selectedMode = selectedMode,
-                    warnings = warnings,
-                    onModeSelected = { selectedMode = it }
-                )
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    if (maxWidth >= WIDE_LAYOUT_BREAKPOINT) {
+                        WideDashboardLayout(
+                            uiState = uiState,
+                            accent = accent,
+                            // A phone in landscape has barely 250dp of usable height: everything
+                            // but the speedometer moves into the scrolling side column so no gauge
+                            // ends up clipped.
+                            shortScreen = maxHeight < SHORT_SCREEN_BREAKPOINT,
+                            onToggleSpeedUnit = onToggleSpeedUnit,
+                            onDriveModeSelected = onDriveModeSelected,
+                            onRequestTripReset = onRequestTripReset
+                        )
+                    } else {
+                        CompactDashboardLayout(
+                            uiState = uiState,
+                            accent = accent,
+                            onToggleSpeedUnit = onToggleSpeedUnit,
+                            onDriveModeSelected = onDriveModeSelected,
+                            onRequestTripReset = onRequestTripReset
+                        )
+                    }
+                }
             }
         }
     }
+
+    if (uiState.tripResetConfirmationVisible) {
+        TripResetDialog(onConfirm = onConfirmTripReset, onDismiss = onDismissTripReset)
+    }
 }
 
+/** Landscape and tablet: revs on the left, speedometer in the middle, everything else on the right. */
 @Composable
-private fun LandscapeDashboardLayout(
-    selectedMode: DriveMode,
-    warnings: List<DashboardWarningState>,
-    onModeSelected: (DriveMode) -> Unit
+private fun WideDashboardLayout(
+    uiState: DashboardUiState,
+    accent: Color,
+    shortScreen: Boolean,
+    onToggleSpeedUnit: () -> Unit,
+    onDriveModeSelected: (DriveMode) -> Unit,
+    onRequestTripReset: () -> Unit
 ) {
-    Row(
+    val vehicleState = uiState.vehicleState
+    val settings = uiState.settings
+
+    Column(
         modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.medium),
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
     ) {
-        SpeedPanel(
-            accent = selectedMode.accent,
+        Row(
             modifier = Modifier
-                .weight(1.25f)
-                .fillMaxHeight()
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
+                .fillMaxWidth()
+                .weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
         ) {
-            MetricGrid(accent = selectedMode.accent, modifier = Modifier.weight(1f))
-            OdometerPanel(modifier = Modifier.fillMaxWidth())
+            // Left: revs and the gear selector.
+            Column(
+                modifier = Modifier.weight(0.9f),
+                verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
+            ) {
+                DashboardPanel(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    RpmGauge(
+                        rpm = vehicleState?.rpm,
+                        vehicleType = uiState.vehicleType,
+                        accent = accent,
+                        animationsEnabled = settings.animationsEnabled,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                DashboardPanel(modifier = Modifier.fillMaxWidth()) {
+                    PanelHeader(title = stringResource(R.string.gear_title))
+                    GearIndicator(gear = vehicleState?.gear, accent = accent)
+                }
+            }
+
+            // Centre: the speedometer, which gets whatever height is left over.
+            Column(
+                modifier = Modifier.weight(1.3f),
+                verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                SpeedGauge(
+                    speedKmh = vehicleState?.speedKmh,
+                    unit = settings.speedUnit,
+                    accent = accent,
+                    animationsEnabled = settings.animationsEnabled,
+                    onToggleUnit = onToggleSpeedUnit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                )
+                if (!shortScreen) {
+                    DistancePanel(
+                        vehicleState = vehicleState,
+                        speedUnit = settings.speedUnit,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            // Right: everything that is read rather than glanced at.
+            Column(
+                modifier = Modifier
+                    .weight(1.1f)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
+            ) {
+                if (shortScreen) {
+                    DistancePanel(
+                        vehicleState = vehicleState,
+                        speedUnit = settings.speedUnit,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                EnergyPanel(
+                    energy = vehicleState?.energy,
+                    vehicleType = uiState.vehicleType,
+                    speedUnit = settings.speedUnit,
+                    animationsEnabled = settings.animationsEnabled,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                TripPanel(
+                    trip = vehicleState?.trip,
+                    vehicleType = uiState.vehicleType,
+                    speedUnit = settings.speedUnit,
+                    onResetTrip = onRequestTripReset,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                TemperaturePanel(
+                    temperatures = vehicleState?.temperatures,
+                    vehicleType = uiState.vehicleType,
+                    unit = settings.temperatureUnit,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                DriveModeSelector(
+                    selected = driveModeOf(vehicleState),
+                    onModeSelected = onDriveModeSelected,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (shortScreen) {
+                    IndicatorCluster(
+                        indicators = vehicleState?.indicators ?: Indicators.NONE,
+                        vehicleType = uiState.vehicleType,
+                        animationsEnabled = settings.animationsEnabled,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
         }
-        Column(
-            modifier = Modifier
-                .weight(0.9f)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
-        ) {
-            WarningPanel(warnings = warnings, modifier = Modifier.weight(1f))
-            DriveModePanel(
-                selectedMode = selectedMode,
-                onModeSelected = onModeSelected,
+
+        if (!shortScreen) {
+            IndicatorCluster(
+                indicators = vehicleState?.indicators ?: Indicators.NONE,
+                vehicleType = uiState.vehicleType,
+                animationsEnabled = settings.animationsEnabled,
+                singleScrollingRow = true,
                 modifier = Modifier.fillMaxWidth()
             )
         }
     }
 }
 
+/** Portrait and small screens: one scrolling column, speed first. */
 @Composable
-private fun PortraitDashboardLayout(
-    selectedMode: DriveMode,
-    warnings: List<DashboardWarningState>,
-    onModeSelected: (DriveMode) -> Unit
+private fun CompactDashboardLayout(
+    uiState: DashboardUiState,
+    accent: Color,
+    onToggleSpeedUnit: () -> Unit,
+    onDriveModeSelected: (DriveMode) -> Unit,
+    onRequestTripReset: () -> Unit
 ) {
+    val vehicleState = uiState.vehicleState
+    val settings = uiState.settings
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
+        verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        SpeedPanel(
-            accent = selectedMode.accent,
+        SpeedGauge(
+            speedKmh = vehicleState?.speedKmh,
+            unit = settings.speedUnit,
+            accent = accent,
+            animationsEnabled = settings.animationsEnabled,
+            onToggleUnit = onToggleSpeedUnit,
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 280.dp)
+                .fillMaxWidth(COMPACT_GAUGE_WIDTH_FRACTION)
+                .aspectRatio(1f)
         )
-        MetricGrid(accent = selectedMode.accent, modifier = Modifier.fillMaxWidth())
-        OdometerPanel(modifier = Modifier.fillMaxWidth())
-        WarningPanel(warnings = warnings, modifier = Modifier.fillMaxWidth())
-        DriveModePanel(
-            selectedMode = selectedMode,
-            onModeSelected = onModeSelected,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
+        ) {
+            DashboardPanel(modifier = Modifier.weight(1f)) {
+                RpmGauge(
+                    rpm = vehicleState?.rpm,
+                    vehicleType = uiState.vehicleType,
+                    accent = accent,
+                    animationsEnabled = settings.animationsEnabled,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+            }
+            DashboardPanel(modifier = Modifier.weight(1f)) {
+                PanelHeader(title = stringResource(R.string.gear_title))
+                GearIndicator(gear = vehicleState?.gear, accent = accent)
+            }
+        }
+        DistancePanel(
+            vehicleState = vehicleState,
+            speedUnit = settings.speedUnit,
+            modifier = Modifier.fillMaxWidth()
+        )
+        EnergyPanel(
+            energy = vehicleState?.energy,
+            vehicleType = uiState.vehicleType,
+            speedUnit = settings.speedUnit,
+            animationsEnabled = settings.animationsEnabled,
+            modifier = Modifier.fillMaxWidth()
+        )
+        TripPanel(
+            trip = vehicleState?.trip,
+            vehicleType = uiState.vehicleType,
+            speedUnit = settings.speedUnit,
+            onResetTrip = onRequestTripReset,
+            modifier = Modifier.fillMaxWidth()
+        )
+        TemperaturePanel(
+            temperatures = vehicleState?.temperatures,
+            vehicleType = uiState.vehicleType,
+            unit = settings.temperatureUnit,
+            modifier = Modifier.fillMaxWidth()
+        )
+        DriveModeSelector(
+            selected = driveModeOf(vehicleState),
+            onModeSelected = onDriveModeSelected,
+            modifier = Modifier.fillMaxWidth()
+        )
+        IndicatorCluster(
+            indicators = vehicleState?.indicators ?: Indicators.NONE,
+            vehicleType = uiState.vehicleType,
+            animationsEnabled = settings.animationsEnabled,
             modifier = Modifier.fillMaxWidth()
         )
     }
 }
 
+/** Odometer and trip distance side by side — the pair a driver reads together. */
 @Composable
-private fun SpeedPanel(
-    accent: Color,
+private fun DistancePanel(
+    vehicleState: VehicleState?,
+    speedUnit: SpeedUnit,
     modifier: Modifier = Modifier
 ) {
-    var speed by remember { mutableIntStateOf(mockSpeedSequence.first()) }
-
-    LaunchedEffect(Unit) {
-        var speedIndex = 0
-        while (true) {
-            delay(1_600)
-            speedIndex = (speedIndex + 1) % mockSpeedSequence.size
-            speed = mockSpeedSequence[speedIndex]
-        }
+    val unavailable = stringResource(R.string.value_unavailable)
+    val distanceUnit = stringResource(speedUnit.distanceLabelRes)
+    val odometerText = if (vehicleState == null) {
+        unavailable
+    } else {
+        "${DashboardFormat.odometer(vehicleState.odometerKm, speedUnit)} $distanceUnit"
+    }
+    val tripText = if (vehicleState == null) {
+        unavailable
+    } else {
+        "${DashboardFormat.distance(vehicleState.trip.distanceKm, speedUnit)} $distanceUnit"
     }
 
     DashboardPanel(modifier = modifier) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            PanelHeader(title = "Speed", value = "Live mock")
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                SpeedGauge(
-                    speed = speed,
-                    maxSpeed = 220,
-                    accent = accent,
-                    modifier = Modifier.size(260.dp)
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                SmallReadout(label = "Trip", value = "142.8 km")
-                SmallReadout(label = "Range", value = "420 km")
-            }
-        }
-    }
-}
-
-@Composable
-private fun SpeedGauge(
-    speed: Int,
-    maxSpeed: Int,
-    accent: Color,
-    modifier: Modifier = Modifier
-) {
-    val targetProgress = (speed.coerceIn(0, maxSpeed).toFloat() / maxSpeed.toFloat())
-    val animatedProgress by animateFloatAsState(
-        targetValue = targetProgress,
-        animationSpec = tween(durationMillis = 900),
-        label = "speedProgress"
-    )
-    val animatedSpeed by animateFloatAsState(
-        targetValue = speed.toFloat(),
-        animationSpec = tween(durationMillis = 900),
-        label = "speedNumber"
-    )
-
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 18.dp.toPx()
-            val gaugeSweep = 270f
-            val startAngle = 135f
-
-            drawArc(
-                color = DashboardSurfaceHigh,
-                startAngle = startAngle,
-                sweepAngle = gaugeSweep,
-                useCenter = false,
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-            )
-            drawArc(
-                color = accent,
-                startAngle = startAngle,
-                sweepAngle = gaugeSweep * animatedProgress,
-                useCenter = false,
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-            )
-            drawArc(
-                color = accent.copy(alpha = 0.22f),
-                startAngle = startAngle,
-                sweepAngle = gaugeSweep * animatedProgress,
-                useCenter = false,
-                style = Stroke(width = 34.dp.toPx(), cap = StrokeCap.Round)
-            )
-        }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = animatedSpeed.toInt().toString(),
-                style = MaterialTheme.typography.displayLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "km/h",
-                style = MaterialTheme.typography.titleMedium,
-                color = DashboardTextMuted
-            )
-            Text(
-                text = "max $maxSpeed",
-                style = MaterialTheme.typography.labelMedium,
-                color = DashboardTextMuted
-            )
-        }
-    }
-}
-
-@Composable
-private fun MetricGrid(
-    accent: Color,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
-    ) {
+        PanelHeader(title = stringResource(R.string.distance_title))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
         ) {
-            MetricTile(metric = mockMetrics[0], accent = accent, modifier = Modifier.weight(1f))
-            MetricTile(metric = mockMetrics[1], accent = accent, modifier = Modifier.weight(1f))
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
-        ) {
-            MetricTile(metric = mockMetrics[2], accent = accent, modifier = Modifier.weight(1f))
-            MetricTile(metric = mockMetrics[3], accent = accent, modifier = Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun MetricTile(
-    metric: DashboardMetric,
-    accent: Color,
-    modifier: Modifier = Modifier
-) {
-    DashboardPanel(modifier = modifier.heightIn(min = 128.dp)) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(DashboardSpacing.small)
-        ) {
-            Text(
-                text = metric.label,
-                style = MaterialTheme.typography.labelMedium,
-                color = DashboardTextMuted
-            )
-            Text(
-                text = metric.value,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = metric.accent ?: accent
-            )
-            Text(
-                text = metric.helper,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-}
-
-@Composable
-private fun OdometerPanel(modifier: Modifier = Modifier) {
-    DashboardPanel(modifier = modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)) {
-            PanelHeader(title = "Distance", value = "Odometer")
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                SmallReadout(label = "Total", value = "38,421 km")
-                SmallReadout(label = "Trip A", value = "142.8 km")
-            }
-        }
-    }
-}
-
-@Composable
-private fun WarningPanel(
-    warnings: List<DashboardWarningState>,
-    modifier: Modifier = Modifier
-) {
-    val activeWarningCount = warnings.count { it.active }
-
-    DashboardPanel(modifier = modifier) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)
-        ) {
-            PanelHeader(
-                title = "Warnings",
-                value = if (activeWarningCount == 0) "All clear" else "$activeWarningCount active"
-            )
-            warnings.forEach { warning ->
-                WarningRow(warning)
-            }
-        }
-    }
-}
-
-@Composable
-private fun WarningRow(warning: DashboardWarningState) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.small),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
+            Readout(
+                label = stringResource(R.string.odometer_label),
+                value = odometerText,
                 modifier = Modifier
-                    .size(10.dp)
-                    .clip(RoundedCornerShape(5.dp))
-                    .background(if (warning.active) DashboardWarning else Color(0xFF22C55E))
+                    .weight(1f)
+                    .testTag(ODOMETER_TAG)
             )
-            Column {
-                Text(
-                    text = warning.label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = warning.helper,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = DashboardTextMuted
-                )
-            }
-        }
-        Text(
-            text = if (warning.active) "ON" else "OK",
-            style = MaterialTheme.typography.labelMedium,
-            color = if (warning.active) DashboardWarning else Color(0xFF22C55E)
-        )
-    }
-}
-
-@Composable
-private fun DriveModePanel(
-    selectedMode: DriveMode,
-    onModeSelected: (DriveMode) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    DashboardPanel(modifier = modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium)) {
-            PanelHeader(title = "Driving Mode", value = selectedMode.label)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(DashboardSpacing.small)
-            ) {
-                DriveMode.entries.forEach { mode ->
-                    ModeChip(
-                        label = mode.label,
-                        selected = mode == selectedMode,
-                        accent = mode.accent,
-                        onClick = { onModeSelected(mode) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ModeChip(
-    label: String,
-    selected: Boolean,
-    accent: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (selected) accent else DashboardSurfaceHigh),
-        color = if (selected) accent else DashboardSurfaceHigh,
-        shape = RoundedCornerShape(8.dp),
-        onClick = onClick
-    ) {
-        Box(
-            modifier = Modifier.padding(vertical = DashboardSpacing.small),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = if (selected) Color(0xFF03111D) else MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
+            Readout(
+                label = stringResource(R.string.trip_title),
+                value = tripText,
+                modifier = Modifier.weight(1f)
             )
         }
     }
 }
 
 @Composable
-private fun DashboardPanel(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = DashboardSurface.copy(alpha = 0.92f),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp
-    ) {
-        Box(
-            modifier = Modifier
-                .border(
-                    width = 1.dp,
-                    color = DashboardSurfaceHigh,
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .padding(DashboardSpacing.medium)
-        ) {
-            content()
+private fun TripResetDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.trip_reset_confirm_title)) },
+        text = { Text(stringResource(R.string.trip_reset_confirm_message)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm, modifier = Modifier.testTag(TRIP_RESET_CONFIRM_TAG)) {
+                Text(stringResource(R.string.trip_reset_confirm_action))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
         }
-    }
+    )
 }
 
 @Composable
-private fun PanelHeader(
-    title: String,
-    value: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+private fun LoadingMessage(modifier: Modifier = Modifier) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Text(
-            text = title,
+            text = stringResource(R.string.status_loading),
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.labelMedium,
-            color = DashboardTextMuted
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.testTag(LOADING_MESSAGE_TAG)
         )
     }
 }
 
+/** Short line explaining why the cluster is not updating, or `null` when all is well. */
 @Composable
-private fun SmallReadout(
-    label: String,
-    value: String
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = DashboardTextMuted
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+private fun DashboardUiState.statusMessage(): String? {
+    val state = dataState
+    return when {
+        state !is VehicleDataState.Unavailable -> null
+        // Readings are still on screen but frozen; say so rather than let them look live.
+        isStale -> stringResource(R.string.status_stale)
+        else -> when (state.reason) {
+            VehicleDataUnavailableReason.NO_SUPPORTED_INTERFACE ->
+                stringResource(R.string.status_no_interface)
+
+            VehicleDataUnavailableReason.NOT_CONNECTED ->
+                stringResource(R.string.status_not_connected)
+
+            VehicleDataUnavailableReason.READ_FAILED ->
+                stringResource(R.string.status_read_failed)
+        }
     }
 }
 
-@Preview(showBackground = true, widthDp = 900, heightDp = 480)
+private fun driveModeOf(vehicleState: VehicleState?): DriveMode =
+    vehicleState?.driveMode ?: DriveMode.NORMAL
+
+private val WIDE_LAYOUT_BREAKPOINT = 700.dp
+
+/** Below this height the wide layout stops using a bottom telltale strip. */
+private val SHORT_SCREEN_BREAKPOINT = 460.dp
+private const val COMPACT_GAUGE_WIDTH_FRACTION = 0.8f
+
+@Preview(name = "Landscape", showBackground = true, widthDp = 960, heightDp = 480)
 @Composable
-private fun DashboardScreenLandscapePreview() {
+private fun DashboardLandscapePreview() {
     CarDashboardTheme {
-        DashboardScreen()
+        DashboardScreen(
+            uiState = previewUiState(),
+            onToggleSpeedUnit = {},
+            onDriveModeSelected = {},
+            onRequestTripReset = {},
+            onConfirmTripReset = {},
+            onDismissTripReset = {},
+            onOpenSettings = {}
+        )
     }
 }
 
-@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Preview(name = "Compact", showBackground = true, widthDp = 400, heightDp = 900)
 @Composable
-private fun DashboardScreenPortraitPreview() {
+private fun DashboardCompactPreview() {
     CarDashboardTheme {
-        DashboardScreen()
+        DashboardScreen(
+            uiState = previewUiState(electric = true),
+            onToggleSpeedUnit = {},
+            onDriveModeSelected = {},
+            onRequestTripReset = {},
+            onConfirmTripReset = {},
+            onDismissTripReset = {},
+            onOpenSettings = {}
+        )
     }
 }
+
+private fun previewUiState(electric: Boolean = false) = DashboardUiState(
+    dataState = VehicleDataState.Available(
+        vehicleState = VehicleState(
+            speedKmh = 86f,
+            rpm = if (electric) 6_700 else 2_350,
+            gear = Gear.DRIVE,
+            driveMode = DriveMode.NORMAL,
+            odometerKm = 38_421.0,
+            trip = TripData(
+                distanceKm = 142.8,
+                drivingTimeMillis = 5_400_000,
+                energyUsed = if (electric) 24.2 else 10.4
+            ),
+            energy = if (electric) {
+                EnergyState.Battery(
+                    levelPercent = 62f,
+                    estimatedRangeKm = 236f,
+                    chargingState = ChargingState.NOT_CHARGING
+                )
+            } else {
+                EnergyState.Fuel(levelPercent = 68f, estimatedRangeKm = 420f)
+            },
+            temperatures = Temperatures(outsideCelsius = 18f, powertrainCelsius = 91f),
+            indicators = Indicators(lowBeam = true, rightTurnSignal = true)
+        ),
+        source = VehicleDataSourceKind.DEMO
+    ),
+    now = LocalDateTime.of(2026, 8, 6, 14, 32)
+)
