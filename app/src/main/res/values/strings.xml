@@ -1,3 +1,147 @@
 <resources>
     <string name="app_name">Car Dashboard</string>
+
+    <!-- Data source / status -->
+    <string name="badge_demo_data">DEMO DATA</string>
+    <string name="badge_demo_data_description">Simulated data. Not a real vehicle.</string>
+    <string name="status_loading">Waiting for vehicle data…</string>
+    <string name="status_stale">Data source stopped. Showing last known values.</string>
+    <string name="status_no_interface">No vehicle interface on this device. Turn on demo mode in settings to review the dashboard.</string>
+    <string name="status_not_connected">Vehicle not connected.</string>
+    <string name="status_read_failed">Lost contact with the data source. Retrying.</string>
+
+    <!-- Speed -->
+    <string name="unit_kmh">km/h</string>
+    <string name="unit_mph">mph</string>
+    <string name="unit_km">km</string>
+    <string name="unit_mi">mi</string>
+    <string name="speed_value_description">Speed %1$s %2$s</string>
+    <string name="speed_unit_toggle_description">Change speed unit. Currently %1$s.</string>
+    <string name="value_unavailable">--</string>
+
+    <!-- RPM -->
+    <string name="rpm_title">RPM</string>
+    <string name="rpm_unit">x1000</string>
+    <string name="rpm_value_description">Engine speed %1$s revolutions per minute</string>
+    <string name="motor_rpm_title">Motor</string>
+
+    <!-- Gear -->
+    <string name="gear_title">Gear</string>
+    <string name="gear_park">P</string>
+    <string name="gear_reverse">R</string>
+    <string name="gear_neutral">N</string>
+    <string name="gear_drive">D</string>
+    <string name="gear_sport">S</string>
+    <string name="gear_description">Selected gear: %1$s</string>
+    <string name="gear_park_name">Park</string>
+    <string name="gear_reverse_name">Reverse</string>
+    <string name="gear_neutral_name">Neutral</string>
+    <string name="gear_drive_name">Drive</string>
+    <string name="gear_sport_name">Sport</string>
+
+    <!-- Energy -->
+    <string name="energy_title_fuel">Fuel</string>
+    <string name="energy_title_battery">Battery</string>
+    <string name="energy_level_percent">%1$s%%</string>
+    <string name="energy_range">Range</string>
+    <string name="energy_low_fuel">Low fuel</string>
+    <string name="energy_low_battery">Low battery</string>
+    <string name="charging_status">Charge state</string>
+    <string name="charging_not_charging">Not charging</string>
+    <string name="charging_plugged_in">Plugged in</string>
+    <string name="charging_charging">Charging</string>
+    <string name="charging_complete">Charge complete</string>
+    <string name="regen_active">Regenerating</string>
+    <string name="energy_level_description">%1$s level %2$s percent</string>
+
+    <!-- Distance / trip -->
+    <string name="distance_title">Distance</string>
+    <string name="odometer_label">Odometer</string>
+    <string name="trip_title">Trip</string>
+    <string name="trip_distance">Trip distance</string>
+    <string name="trip_average_speed">Average speed</string>
+    <string name="trip_driving_time">Driving time</string>
+    <string name="trip_consumption">Consumption</string>
+    <string name="trip_consumption_unit_fuel">L/100 km</string>
+    <string name="trip_consumption_unit_electric">kWh/100 km</string>
+    <string name="trip_reset">Reset trip</string>
+    <string name="trip_reset_confirm_title">Reset trip data?</string>
+    <string name="trip_reset_confirm_message">Trip distance, average speed, driving time and consumption go back to zero. The odometer is not affected.</string>
+    <string name="trip_reset_confirm_action">Reset</string>
+    <string name="action_cancel">Cancel</string>
+
+    <!-- Temperatures -->
+    <string name="temperature_title">Temperature</string>
+    <string name="temperature_outside">Outside</string>
+    <string name="temperature_engine">Engine</string>
+    <string name="temperature_battery">Battery pack</string>
+    <string name="temperature_unavailable">Sensor unavailable</string>
+    <string name="unit_celsius">°C</string>
+    <string name="unit_fahrenheit">°F</string>
+
+    <!-- Drive modes -->
+    <string name="drive_mode_title">Drive mode</string>
+    <string name="drive_mode_eco">Eco</string>
+    <string name="drive_mode_normal">Normal</string>
+    <string name="drive_mode_sport">Sport</string>
+    <string name="drive_mode_note">Changes how the dashboard is presented and how the demo drives. It does not command a vehicle.</string>
+
+    <!-- Indicators -->
+    <string name="indicators_title">Indicators</string>
+    <string name="indicators_all_clear">All clear</string>
+    <plurals name="indicators_active_count">
+        <item quantity="one">%1$d active</item>
+        <item quantity="other">%1$d active</item>
+    </plurals>
+    <string name="indicator_state_on">On</string>
+    <string name="indicator_state_off">Off</string>
+    <string name="indicator_left_turn">Left turn signal</string>
+    <string name="indicator_right_turn">Right turn signal</string>
+    <string name="indicator_hazard">Hazard lights</string>
+    <string name="indicator_high_beam">High beam</string>
+    <string name="indicator_low_beam">Low beam</string>
+    <string name="indicator_parking_brake">Parking brake</string>
+    <string name="indicator_seat_belt">Seat belt</string>
+    <string name="indicator_door_open">Door open</string>
+    <string name="indicator_engine">Engine warning</string>
+    <string name="indicator_low_energy_fuel">Low fuel</string>
+    <string name="indicator_low_energy_battery">Low battery</string>
+    <string name="indicator_tire_pressure">Tire pressure</string>
+    <string name="indicator_temperature">Temperature</string>
+    <string name="indicator_abs">Anti-lock brakes</string>
+    <string name="indicator_traction_control">Traction control</string>
+    <string name="glyph_parking_brake">P</string>
+    <string name="glyph_abs">ABS</string>
+    <string name="glyph_traction_control">TC</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_open">Open settings</string>
+    <string name="settings_back">Back to dashboard</string>
+    <string name="settings_section_units">Units</string>
+    <string name="settings_speed_unit">Speed and distance</string>
+    <string name="settings_temperature_unit">Temperature</string>
+    <string name="settings_section_data">Data source</string>
+    <string name="settings_demo_mode">Demo mode</string>
+    <string name="settings_demo_mode_summary">Runs a simulated drive cycle so the dashboard can be reviewed without a vehicle. Values are not real.</string>
+    <string name="settings_demo_vehicle_type">Demo vehicle</string>
+    <string name="settings_vehicle_combustion">Fuel</string>
+    <string name="settings_vehicle_electric">Electric</string>
+    <string name="settings_reset_demo">Reset demo data</string>
+    <string name="settings_reset_demo_summary">Puts the simulation back to its starting point, including the odometer.</string>
+    <string name="settings_reset_demo_done">Demo data reset</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_animations">Gauge animations</string>
+    <string name="settings_animations_summary">Smooths needle and value changes. Turn off to update instantly.</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_about_version">Version %1$s</string>
+    <string name="settings_about_body">An offline instrument-cluster demo for Android phones and tablets. It has no connection to a real vehicle: every value on the dashboard comes from the built-in simulation.</string>
+
+    <!-- Clock -->
+    <string name="clock_time_pattern" translatable="false">HH:mm</string>
+    <string name="clock_date_pattern" translatable="false">EEE d MMM</string>
 </resources>
