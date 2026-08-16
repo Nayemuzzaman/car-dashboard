@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.cardashboard.R
 import com.example.cardashboard.domain.model.ChargingState
@@ -198,6 +199,8 @@ private fun WideDashboardLayout(
                 verticalArrangement = Arrangement.spacedBy(DashboardSpacing.medium),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Square, and never larger than the space it was given, so the arc stays
+                // circular in both the portrait and landscape layouts.
                 SpeedGauge(
                     speedKmh = vehicleState?.speedKmh,
                     unit = settings.speedUnit,
