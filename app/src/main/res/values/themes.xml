@@ -1,11 +1,5 @@
 <resources>
-    <!--
-      Only used before Compose takes over: it decides the colour of the window while the activity
-      starts. Dark, so a dark cluster does not open with a white flash.
-    -->
-    <style name="Theme.CarDashboard" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/dashboard_background</item>
+    <style name="Theme.CarDashboard" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 </resources>
