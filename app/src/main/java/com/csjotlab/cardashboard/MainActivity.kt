@@ -29,6 +29,7 @@ class MainActivity : ComponentActivity() {
         // the process is killed outright there is no callback at all — and nothing left to leak.
         if (isFinishing) {
             (application as? CarDashboardApplication)?.shutdownVehicleGraph()
+            (application as? CarDashboardApplication)?.shutdownNavigationGraph()
         }
     }
 }

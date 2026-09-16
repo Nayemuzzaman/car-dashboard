@@ -154,6 +154,49 @@ A structural test enforces that nothing in the `main` source set can call the to
 companion assertion checks that the guard is really reading the source tree — so it cannot quietly
 become a no-op if the package ever moves again.
 
+## Navigation
+
+The **Navigate** chip opens a full-screen, open-source map with search and turn-by-turn guidance.
+No account, key, or server is needed:
+
+| Concern | Service | Override |
+| --- | --- | --- |
+| Map tiles | [OpenFreeMap](https://openfreemap.org) (OpenStreetMap vector tiles) | `-PmapDayStyleUrl=… -PmapNightStyleUrl=…` |
+| Road routing | [Valhalla](https://valhalla.github.io/valhalla/) public server run by FOSSGIS — reports and avoids toll roads | `-PvalhallaBaseUrl=…` |
+| Fallback routing | [OSRM](https://project-osrm.org) public demo server (no toll data) | `-PosrmBaseUrl=…` |
+| Optional routing | Self-hosted [GraphHopper](https://www.graphhopper.com/open-source/) — tried first when set | `-ProutingBaseUrl=http://<host>:8989` |
+| Search / reverse | [Photon](https://photon.komoot.io) (komoot's open OSM geocoder) | `-PgeocodingBaseUrl=…` |
+
+Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL). The
+public Valhalla, OSRM and Photon endpoints are community services with no SLA; point the overrides
+at self-hosted instances for production use.
+
+**Planning** works like a maps app: a **● Your location** row and a **◉ Choose destination** row
+with a ⇅ swap button. Tap a row to make it the search field — results appear after two characters,
+ranked near your GPS fix, each with a category glyph, address and distance; with nothing typed, your
+recent places are listed. Tapping the map drops a destination and names it by reverse geocoding.
+
+**Overview** fits the whole route on screen with distance, time, ETA, the main road ("via E3") and a
+toll badge: **Toll road**, **Toll-free**, or **Toll info unavailable** when the router in use cannot
+say (OSRM fallback, straight-line preview) — it never guesses "free". The **Avoid tolls** switch
+re-routes with Valhalla's toll avoidance; if tolls remain unavoidable the badge says so. Press
+**Start** for **Guidance**: heading-up camera, a turn glyph and phrase ("Turn left in 300 m"), a
+**Toll ahead** tag when the next road is tolled, automatic rerouting when you leave the route (at
+most once per 25 m of movement, so a car parked beside the road does not poll the router), **◎** to
+recenter after panning, **End** to finish. If every router is unreachable the app draws a straight
+line and labels it **Straight-line preview** — it never presents a straight line as a road route.
+
+Screenshots: [nav-planning](docs/screenshots/nav-planning.png), [nav-search](docs/screenshots/nav-search.png),
+[nav-overview](docs/screenshots/nav-overview.png), [nav-guidance](docs/screenshots/nav-guidance.png).
+
+**Verified on emulator (2026-09-16):** OSM tiles render; Photon search returns nearby named places
+with distances; Valhalla road routes draw and fit; Kitakyushu → Hakata shows **Toll road · via E3**
+(77 km, 1 h 10 min) and **Avoid tolls** re-routes to **Toll-free · via 199** (71 km, 2 h 1 min);
+guidance follows simulated `adb emu geo fix` drives to arrival; map tap is reverse-geocoded to a name;
+recenter after pan; recents persist across restart. **Verified on a Pixel 7a:** install, live GPS fix,
+night tiles, planner. **Not verified:** a real vehicle drive with live GPS course and compass (the
+emulator supplies neither, so the heading-up rotation is exercised only by unit tests).
+
 ## Platform support
 
 - Android phones and tablets, **minSdk 24** (Android 7.0), targetSdk 34. Verified on a Pixel 7a.
@@ -198,8 +241,8 @@ adb logcat -s CarDash/Vehicle
 ## Testing
 
 ```bash
-./gradlew testDebugUnitTest          # 336 JVM unit tests across 27 suites
-./gradlew connectedDebugAndroidTest  # 42 instrumented tests (needs a device or emulator)
+./gradlew testDebugUnitTest          # 468 JVM unit tests
+./gradlew connectedDebugAndroidTest  # 55 instrumented tests (needs a device or emulator)
 ```
 
 Unit tests cover the `Signal` contract, state validation, unit formatting, the ELM327 session

@@ -3,6 +3,26 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Self-hosted GraphHopper Directions API. Empty (the default) means "not configured": the app then
+// routes via the public OSRM server below. Set it for a device on the same LAN as a GraphHopper
+// instance: `./gradlew assembleDebug -ProutingBaseUrl=http://<host-lan-ip>:8989`.
+val routingBaseUrl = providers.gradleProperty("routingBaseUrl").getOrElse("")
+
+// Public Valhalla router run by FOSSGIS (open, no key, fair use). The only open router that reports
+// toll roads and can avoid them, so it is first in the public chain.
+val valhallaBaseUrl = providers.gradleProperty("valhallaBaseUrl").getOrElse("https://valhalla1.openstreetmap.de")
+
+// Public OSRM demo router (open, no key, no SLA); fallback when Valhalla is unreachable.
+val osrmBaseUrl = providers.gradleProperty("osrmBaseUrl").getOrElse("https://router.project-osrm.org")
+
+// Photon (komoot) OSM geocoder: built for search-as-you-type, no key. Override with a self-hosted
+// instance for heavier use.
+val geocodingBaseUrl = providers.gradleProperty("geocodingBaseUrl").getOrElse("https://photon.komoot.io")
+
+// OpenFreeMap OSM vector-tile styles (free, no key). Any MapLibre style URL works here.
+val mapDayStyleUrl = providers.gradleProperty("mapDayStyleUrl").getOrElse("https://tiles.openfreemap.org/styles/liberty")
+val mapNightStyleUrl = providers.gradleProperty("mapNightStyleUrl").getOrElse("https://tiles.openfreemap.org/styles/dark")
+
 android {
     namespace = "com.csjotlab.cardashboard"
     compileSdk = 34
@@ -14,6 +34,13 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "ROUTING_BASE_URL", "\"$routingBaseUrl\"")
+        buildConfigField("String", "VALHALLA_BASE_URL", "\"$valhallaBaseUrl\"")
+        buildConfigField("String", "OSRM_BASE_URL", "\"$osrmBaseUrl\"")
+        buildConfigField("String", "GEOCODING_BASE_URL", "\"$geocodingBaseUrl\"")
+        buildConfigField("String", "MAP_DAY_STYLE_URL", "\"$mapDayStyleUrl\"")
+        buildConfigField("String", "MAP_NIGHT_STYLE_URL", "\"$mapNightStyleUrl\"")
     }
 
     buildFeatures {
@@ -65,6 +92,13 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.4")
+
+    // Navigation/map subsystem. MapLibre stays behind the NavigationMap seam in nav/map so the
+    // renderer remains replaceable. Pinned to the 11.x line for compileSdk 34 compatibility.
+    // kotlinx-serialization-json is used for routing-response parsing without the serialization
+    // compiler plugin.
+    implementation("org.maplibre.gl:android-sdk:11.13.5")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 
