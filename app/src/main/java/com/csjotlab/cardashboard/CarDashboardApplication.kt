@@ -1,14 +1,24 @@
 package com.csjotlab.cardashboard
 
 import android.app.Application
+import com.csjotlab.cardashboard.di.NavigationContainer
 import com.csjotlab.cardashboard.di.VehicleContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import org.maplibre.android.MapLibre
+import org.maplibre.android.WellKnownTileServer
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class CarDashboardApplication : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+        // MapLibre needs a one-time bootstrap before any MapView is created. No API key is required
+        // for the MapLibre demo tile server.
+        MapLibre.getInstance(this, null, WellKnownTileServer.MapLibre)
+    }
 
     private val lock = Any()
     private var vehicleContainer: VehicleContainer? = null
@@ -29,6 +39,21 @@ class CarDashboardApplication : Application() {
             ).also { vehicleContainer = it }
         }
 
+    private var navigationContainer: NavigationContainer? = null
+
+    /**
+     * Built lazily the first time the navigation screen asks for it, and rebuilt after shutdown.
+     * Building it is what starts the GPS/compass providers, so they only run while navigation is
+     * in use.
+     */
+    val navigation: NavigationContainer
+        get() = synchronized(lock) {
+            navigationContainer ?: NavigationContainer(
+                context = this,
+                applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            ).also { navigationContainer = it }
+        }
+
     /**
      * The one production teardown path for the vehicle graph. See [VehicleContainer] for why the
      * graph is process-scoped and therefore has to be stopped deliberately.
@@ -41,6 +66,14 @@ class CarDashboardApplication : Application() {
      */
     fun shutdownVehicleGraph() {
         val doomed = synchronized(lock) { vehicleContainer.also { vehicleContainer = null } }
+            ?: return
+        CoroutineScope(NonCancellable + Dispatchers.Default).launch {
+            runCatching { doomed.shutdown() }
+        }
+    }
+
+    fun shutdownNavigationGraph() {
+        val doomed = synchronized(lock) { navigationContainer.also { navigationContainer = null } }
             ?: return
         CoroutineScope(NonCancellable + Dispatchers.Default).launch {
             runCatching { doomed.shutdown() }
