@@ -2,13 +2,21 @@ package com.csjotlab.cardashboard.navigation
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -82,66 +90,115 @@ fun CarDashboardApp() {
         }
         composable(NavigationRoute.route) {
             val context = LocalContext.current
+            val navigation = application.navigation
             val navigationViewModel: NavigationViewModel = viewModel(
                 factory = NavigationViewModel.Factory(
-                    application.navigation.repository,
-                    application.navigation.recentDestinations,
-                    application.navigation.geocodingEngine,
+                    navigation.repository,
+                    navigation.recentDestinations,
+                    navigation.geocodingEngine,
+                    navigation.session,
                 ),
             )
 
+            fun locationGranted() = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            ) == PackageManager.PERMISSION_GRANTED
+
+            var hasLocationPermission by remember { mutableStateOf(locationGranted()) }
             val locationPermissionLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestPermission(),
-            ) { granted ->
-                if (granted) {
-                    (context.applicationContext as? CarDashboardApplication)
-                        ?.navigation
-                        ?.restartProviders()
-                }
+                ActivityResultContracts.RequestMultiplePermissions(),
+            ) { grants ->
+                hasLocationPermission = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true || locationGranted()
+                if (hasLocationPermission) navigation.restartProviders()
             }
+            // The guidance notification is optional: guidance works without it, so a refusal is final.
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission(),
+            ) { }
+
+            fun requestLocation() = locationPermissionLauncher.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+            )
 
             LaunchedEffect(Unit) {
-                val granted = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                ) == PackageManager.PERMISSION_GRANTED
-                if (!granted) {
-                    locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                if (!hasLocationPermission) requestLocation()
+            }
+
+            // GPS and compass run while this screen is visible (and while the guidance service
+            // holds them), not merely because the navigation graph exists.
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                var holding = false
+                val observer = LifecycleEventObserver { _, event ->
+                    when (event) {
+                        Lifecycle.Event.ON_START -> if (!holding) { navigation.acquireSensors(); holding = true }
+                        Lifecycle.Event.ON_STOP -> if (holding) { navigation.releaseSensors(); holding = false }
+                        else -> Unit
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                    if (holding) navigation.releaseSensors()
                 }
             }
 
             val uiState by navigationViewModel.uiState.collectAsStateWithLifecycle()
             val navState by navigationViewModel.navigationState.collectAsStateWithLifecycle()
             val screenMode by navigationViewModel.screenMode.collectAsStateWithLifecycle()
-            val followMode by navigationViewModel.followMode.collectAsStateWithLifecycle()
+            val cameraMode by navigationViewModel.cameraMode.collectAsStateWithLifecycle()
+            val headingUp by navigationViewModel.headingUp.collectAsStateWithLifecycle()
+            val themeMode by navigationViewModel.themeMode.collectAsStateWithLifecycle()
             val origin by navigationViewModel.origin.collectAsStateWithLifecycle()
             val destination by navigationViewModel.destination.collectAsStateWithLifecycle()
             val searchQuery by navigationViewModel.searchQuery.collectAsStateWithLifecycle()
             val search by navigationViewModel.search.collectAsStateWithLifecycle()
+            val activeCategory by navigationViewModel.activeCategory.collectAsStateWithLifecycle()
             val recent by navigationViewModel.recentDestinations.collectAsStateWithLifecycle()
+            val alternatives by navigationViewModel.routeAlternatives.collectAsStateWithLifecycle()
             NavigationScreen(
                 uiState = uiState,
                 navigationState = navState,
                 screenMode = screenMode,
-                followMode = followMode,
+                cameraMode = cameraMode,
+                headingUp = headingUp,
+                themeMode = themeMode,
                 origin = origin,
                 destination = destination,
                 searchQuery = searchQuery,
                 search = search,
                 recentDestinations = recent,
+                activeCategory = activeCategory,
+                routeAlternatives = alternatives,
+                hasLocationPermission = hasLocationPermission,
                 actions = NavigationActions(
                     onSearchQueryChanged = navigationViewModel::onSearchQueryChanged,
                     onSelectDestination = navigationViewModel::selectDestination,
                     onSelectOrigin = navigationViewModel::selectOrigin,
                     onUseCurrentLocation = navigationViewModel::useCurrentLocationAsOrigin,
                     onMapTap = navigationViewModel::selectMapPoint,
-                    onStart = navigationViewModel::startGuidance,
+                    onStart = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        navigationViewModel.startGuidance()
+                    },
                     onEnd = navigationViewModel::endNavigation,
                     onRecenter = navigationViewModel::recenter,
                     onUserMovedMap = navigationViewModel::onUserMovedMap,
                     onSwapEndpoints = navigationViewModel::swapEndpoints,
                     onAvoidTollsChanged = navigationViewModel::setAvoidTolls,
                     onBack = { navController.popBackStack() },
+                    onSearchCategory = navigationViewModel::searchCategory,
+                    onSelectRoute = navigationViewModel::selectRoute,
+                    onRetryRoute = navigationViewModel::retryRoute,
+                    onShowOverview = navigationViewModel::showRouteOverview,
+                    onToggleHeadingUp = navigationViewModel::toggleHeadingUp,
+                    onThemeModeChanged = navigationViewModel::setThemeMode,
+                    onRequestLocationPermission = ::requestLocation,
                 ),
             )
         }

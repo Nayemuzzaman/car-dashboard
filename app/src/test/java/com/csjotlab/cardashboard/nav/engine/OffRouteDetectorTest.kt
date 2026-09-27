@@ -85,3 +85,31 @@ class ReroutePolicyTest {
         assertFalse(ReroutePolicy.shouldRequest(offRoute = false, RerouteState.Idle))
     }
 }
+
+class OffRouteToleranceTest {
+
+    @Test
+    fun `a coarse fix widens the tolerance`() {
+        val detector = OffRouteDetector()
+        // 45 m off with 40 m accuracy is within 1.5 x accuracy: not evidence of leaving the route.
+        repeat(5) { assertFalse(detector.checkLateral(45.0, accuracyMeters = 40f, timestampMs = it * 1_000L)) }
+    }
+
+    @Test
+    fun `a useless fix neither extends nor resets the streak`() {
+        val detector = OffRouteDetector()
+        assertFalse(detector.checkLateral(100.0, 5f, 0L))
+        assertFalse(detector.checkLateral(100.0, 5f, 2_000L))
+        assertFalse(detector.checkLateral(0.0, accuracyMeters = 90f, timestampMs = 3_000L)) // ignored
+        assertTrue(detector.checkLateral(100.0, 5f, 4_000L))
+    }
+
+    @Test
+    fun `three fixes in quick succession are not enough without time`() {
+        val detector = OffRouteDetector()
+        assertFalse(detector.checkLateral(100.0, 5f, 0L))
+        assertFalse(detector.checkLateral(100.0, 5f, 500L))
+        assertFalse(detector.checkLateral(100.0, 5f, 1_000L))
+        assertTrue(detector.checkLateral(100.0, 5f, 4_000L))
+    }
+}

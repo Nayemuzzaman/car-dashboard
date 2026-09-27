@@ -30,6 +30,31 @@ object RouteProgressCalculator {
         )
     }
 
+    /**
+     * Remaining time with step positions measured on the route geometry ([RouteIndex]): the
+     * un-driven fraction of the current step plus every later step.
+     */
+    fun remainingTimeSeconds(index: RouteIndex, distanceAlong: Double): Long {
+        val steps = index.route.steps
+        if (steps.isEmpty()) {
+            val length = index.lengthMeters
+            return if (length <= 0.0) index.route.totalDurationSeconds
+            else (index.route.totalDurationSeconds * (1.0 - distanceAlong / length)).roundToLong().coerceAtLeast(0L)
+        }
+        var remaining = 0.0
+        for (i in steps.indices) {
+            val start = index.stepStartMeters[i]
+            val end = if (i < steps.lastIndex) index.stepStartMeters[i + 1] else index.lengthMeters
+            val span = end - start
+            remaining += when {
+                distanceAlong <= start -> steps[i].durationSeconds.toDouble()
+                distanceAlong >= end || span <= 0.0 -> 0.0
+                else -> steps[i].durationSeconds * (end - distanceAlong) / span
+            }
+        }
+        return remaining.roundToLong().coerceAtLeast(0L)
+    }
+
     fun etaMs(clock: Clock, remainingTimeSeconds: Long): Long =
         clock.nowMs() + remainingTimeSeconds * 1_000L
 

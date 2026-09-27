@@ -2,9 +2,12 @@ package com.csjotlab.cardashboard.ui.navigation
 
 import com.csjotlab.cardashboard.nav.data.NavigationSnapshot
 import com.csjotlab.cardashboard.nav.domain.GeoPoint
+import com.csjotlab.cardashboard.nav.domain.GpsQuality
 import com.csjotlab.cardashboard.nav.domain.NavigationPhase
 import com.csjotlab.cardashboard.nav.domain.RerouteState
+import com.csjotlab.cardashboard.nav.domain.Route
 import com.csjotlab.cardashboard.nav.engine.GeoMath
+import com.csjotlab.cardashboard.nav.engine.ManeuverPhrasing
 import com.csjotlab.cardashboard.nav.geocoding.Place
 import com.csjotlab.cardashboard.vehicle.domain.isValue
 import com.csjotlab.cardashboard.vehicle.domain.valueOrNull
@@ -47,19 +50,8 @@ object NavigationFormatter {
         val previewLabel = if (state.route?.isPreview == true) STRAIGHT_LINE_PREVIEW else null
 
         val route = state.route
-        val tollLabel = route?.let {
-            when {
-                it.hasToll == null -> TOLL_UNKNOWN
-                it.hasToll && snapshot.avoidTolls -> TOLLS_UNAVOIDABLE
-                it.hasToll -> TOLL_ROAD
-                else -> TOLL_FREE
-            }
-        }
-        val viaText = route?.steps
-            ?.filter { it.roadName != null && it.distanceMeters > 0f }
-            ?.maxByOrNull { it.distanceMeters }
-            ?.roadName
-            ?.let { "via $it" }
+        val tollLabel = route?.let { tollLabel(it, snapshot.avoidTolls) }
+        val viaText = route?.let(::viaText)
         val nextStepToll = state.nextManeuver?.let { next ->
             route?.steps?.firstOrNull { it.maneuver == next }?.toll
         } ?: false
@@ -80,7 +72,57 @@ object NavigationFormatter {
             viaText = viaText,
             nextStepToll = nextStepToll,
             avoidTolls = snapshot.avoidTolls,
+            maneuverDistanceText = state.distanceToManeuverMeters?.let(::formatManeuverDistance),
+            instructionText = state.maneuverInstruction,
+            currentRoadText = state.currentRoadName,
+            rerouteText = when {
+                !snapshot.guidanceActive -> null
+                state.rerouteState == RerouteState.InProgress -> REROUTING
+                state.rerouteState == RerouteState.Failed -> UNABLE_TO_REROUTE
+                else -> null
+            },
+            gpsText = when (state.gpsQuality) {
+                GpsQuality.Lost -> GPS_LOST
+                GpsQuality.Degraded -> GPS_WEAK
+                GpsQuality.None, GpsQuality.Good -> null
+            },
+            routeOptions = snapshot.routeOptions.map { option ->
+                RouteOptionUi(
+                    durationText = formatDuration(option.totalDurationSeconds),
+                    distanceText = formatRemainingDistance(option.totalDistanceMeters),
+                    viaText = viaText(option),
+                    tollLabel = tollLabel(option, snapshot.avoidTolls),
+                    isPreview = option.isPreview,
+                )
+            },
+            selectedRouteIndex = snapshot.selectedRouteIndex,
+            canRetry = state.rerouteState == RerouteState.Failed && !hasRoute && snapshot.destination != null,
         )
+    }
+
+    private fun tollLabel(route: Route, avoidTolls: Boolean): String = when {
+        route.hasToll == null -> TOLL_UNKNOWN
+        route.hasToll && avoidTolls -> TOLLS_UNAVOIDABLE
+        route.hasToll -> TOLL_ROAD
+        else -> TOLL_FREE
+    }
+
+    private fun viaText(route: Route): String? = route.steps
+        .filter { it.roadName != null && it.distanceMeters > 0f }
+        .maxByOrNull { it.distanceMeters }
+        ?.roadName
+        ?.let { "via $it" }
+
+    /**
+     * The large banner distance, rounded the way drivers read it: 10 m steps up close, 50 m steps
+     * under a kilometre, then kilometres. Inside [ManeuverPhrasing.IMMINENT_METERS] it is simply [NOW].
+     */
+    fun formatManeuverDistance(meters: Float): String = when {
+        meters <= ManeuverPhrasing.IMMINENT_METERS -> NOW
+        meters < 100f -> "${(meters / 10f).roundToInt() * 10} m"
+        meters < 975f -> "${(meters / 50f).roundToInt() * 50} m"
+        meters < 10_000f -> String.format(Locale.US, "%.1f km", meters / 1_000f)
+        else -> "${(meters / 1_000f).roundToInt()} km"
     }
 
     fun formatRemainingDistance(meters: Float): String {

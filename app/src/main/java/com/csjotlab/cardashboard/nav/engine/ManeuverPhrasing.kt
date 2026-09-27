@@ -32,6 +32,25 @@ object ManeuverPhrasing {
         if (meters < 1_000f) "${meters.roundToInt()} m"
         else String.format(Locale.US, "%.1f km", meters / 1_000f)
 
+    /**
+     * The banner instruction without a distance — the distance is shown separately and larger.
+     * [roadName] is the road the maneuver leads onto; it is only ever used when the router named it.
+     */
+    fun instruction(type: ManeuverType, roadName: String?): String? {
+        val onto = roadName?.takeIf { it.isNotBlank() }?.let { " onto $it" }.orEmpty()
+        return when (type) {
+            ManeuverType.Arrive -> "Arrive at your destination"
+            ManeuverType.Unknown -> null
+            ManeuverType.Continue -> roadName?.takeIf { it.isNotBlank() }?.let { "Continue on $it" } ?: "Continue straight"
+            ManeuverType.Depart -> roadName?.takeIf { it.isNotBlank() }?.let { "Head out on $it" } ?: "Depart"
+            ManeuverType.SlightLeft -> "Slight left$onto"
+            ManeuverType.SlightRight -> "Slight right$onto"
+            is ManeuverType.Exit -> (type.number?.let { "Take exit $it" } ?: "Take the exit") + if (type.number == null) onto else ""
+            is ManeuverType.Roundabout -> roundabout(type) + onto
+            else -> actionFor(type)?.let { it + onto }
+        }
+    }
+
     private fun roundabout(type: ManeuverType.Roundabout): String =
         type.exitNumber?.let { "At the roundabout, take the ${ordinal(it)} exit" }
             ?: "Enter the roundabout"
@@ -49,6 +68,8 @@ object ManeuverPhrasing {
         ManeuverType.KeepLeft -> "Keep left"
         ManeuverType.KeepRight -> "Keep right"
         ManeuverType.Merge -> "Merge"
+        ManeuverType.RampLeft -> "Take the ramp on the left"
+        ManeuverType.RampRight -> "Take the ramp on the right"
         is ManeuverType.Exit -> type.number?.let { "Take exit $it" } ?: "Take the exit"
         ManeuverType.Unknown -> null
         is ManeuverType.Roundabout, ManeuverType.Arrive -> null // handled above

@@ -22,6 +22,9 @@ sealed interface ManeuverType {
     data object KeepLeft : ManeuverType
     data object KeepRight : ManeuverType
     data object Merge : ManeuverType
+    /** Highway entrance ramp on the left / right. */
+    data object RampLeft : ManeuverType
+    data object RampRight : ManeuverType
     data object Unknown : ManeuverType
 }
 

@@ -13,10 +13,15 @@ const val MOVING = "Moving"
 const val STOPPED = "Stopped"
 const val UNAVAILABLE = "—"
 const val SEARCH_UNAVAILABLE = "Search unavailable"
+const val WAITING_FOR_LOCATION_NEARBY = "Waiting for your location to find places nearby…"
 const val TOLL_ROAD = "Toll road"
 const val TOLL_FREE = "Toll-free"
 const val TOLL_UNKNOWN = "Toll info unavailable"
 const val TOLLS_UNAVOIDABLE = "Tolls unavoidable"
+const val REROUTING = "Rerouting…"
+const val GPS_LOST = "GPS signal lost"
+const val GPS_WEAK = "Weak GPS signal"
+const val NOW = "Now"
 
 /**
  * Everything the navigation screen is allowed to show. Strings are produced by
@@ -42,6 +47,21 @@ data class NavigationUiState(
     val nextStepToll: Boolean = false,
     /** The driver's preference as sent to the router. */
     val avoidTolls: Boolean = false,
+    /** Banner distance to the next maneuver: "300 m", "1.2 km", [NOW]. */
+    val maneuverDistanceText: String? = null,
+    /** Banner instruction without distance: "Turn right onto Route 3". */
+    val instructionText: String? = null,
+    /** The road being driven, when named. */
+    val currentRoadText: String? = null,
+    /** [REROUTING] or [UNABLE_TO_REROUTE] while guiding; null otherwise. */
+    val rerouteText: String? = null,
+    /** [GPS_LOST] or [GPS_WEAK]; null while the signal is good. */
+    val gpsText: String? = null,
+    /** The routes offered for this trip, recommendation first. */
+    val routeOptions: List<RouteOptionUi> = emptyList(),
+    val selectedRouteIndex: Int = 0,
+    /** No route could be found; the driver can try again. */
+    val canRetry: Boolean = false,
 ) {
     companion object {
         fun idle(): NavigationUiState = NavigationUiState(
@@ -59,3 +79,12 @@ data class NavigationUiState(
         )
     }
 }
+
+/** One route option in the overview. */
+data class RouteOptionUi(
+    val durationText: String,
+    val distanceText: String,
+    val viaText: String?,
+    val tollLabel: String,
+    val isPreview: Boolean,
+)

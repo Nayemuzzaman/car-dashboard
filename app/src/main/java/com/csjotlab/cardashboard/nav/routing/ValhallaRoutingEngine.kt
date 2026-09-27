@@ -51,6 +51,9 @@ class ValhallaRoutingEngine(
             },
         )
         put("costing", "auto")
+        // Up to two other routes for the driver to choose from; servers that cannot find any
+        // simply return none.
+        put("alternates", 2)
         put("units", "kilometers")
         put("language", "en-US")
         if (request.avoidTolls) {

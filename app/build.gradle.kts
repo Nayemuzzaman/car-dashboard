@@ -19,6 +19,11 @@ val osrmBaseUrl = providers.gradleProperty("osrmBaseUrl").getOrElse("https://rou
 // instance for heavier use.
 val geocodingBaseUrl = providers.gradleProperty("geocodingBaseUrl").getOrElse("https://photon.komoot.io")
 
+// Overpass API servers for "nearby fuel / parking / …" (open, no key, fair use), comma-separated.
+// They are queried in parallel and the first answer wins: public instances are often overloaded.
+val overpassBaseUrls = providers.gradleProperty("overpassBaseUrls")
+    .getOrElse("https://overpass-api.de,https://maps.mail.ru/osm/tools/overpass,https://overpass.kumi.systems")
+
 // OpenFreeMap OSM vector-tile styles (free, no key). Any MapLibre style URL works here.
 val mapDayStyleUrl = providers.gradleProperty("mapDayStyleUrl").getOrElse("https://tiles.openfreemap.org/styles/liberty")
 val mapNightStyleUrl = providers.gradleProperty("mapNightStyleUrl").getOrElse("https://tiles.openfreemap.org/styles/dark")
@@ -39,6 +44,7 @@ android {
         buildConfigField("String", "VALHALLA_BASE_URL", "\"$valhallaBaseUrl\"")
         buildConfigField("String", "OSRM_BASE_URL", "\"$osrmBaseUrl\"")
         buildConfigField("String", "GEOCODING_BASE_URL", "\"$geocodingBaseUrl\"")
+        buildConfigField("String", "OVERPASS_BASE_URLS", "\"$overpassBaseUrls\"")
         buildConfigField("String", "MAP_DAY_STYLE_URL", "\"$mapDayStyleUrl\"")
         buildConfigField("String", "MAP_NIGHT_STYLE_URL", "\"$mapNightStyleUrl\"")
     }

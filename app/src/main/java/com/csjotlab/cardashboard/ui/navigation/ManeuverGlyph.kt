@@ -22,5 +22,7 @@ fun ManeuverType.glyph(): String = when (this) {
     ManeuverType.KeepLeft -> "⇖"
     ManeuverType.KeepRight -> "⇗"
     ManeuverType.Merge -> "⇑"
+    ManeuverType.RampLeft -> "⬉"
+    ManeuverType.RampRight -> "⬈"
     ManeuverType.Unknown -> "•"
 }

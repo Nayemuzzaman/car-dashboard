@@ -9,6 +9,8 @@ data class LocationReading(
     val courseDegrees: Float?,
     val accuracyMeters: Float?,
     val timestampMs: Long,
+    /** 68 % confidence of [courseDegrees], API 26+; null when the platform did not report it. */
+    val courseAccuracyDegrees: Float? = null,
 )
 
 /** Supplies GPS fixes. One implementation is the platform `LocationManager`; AAOS `CarSensors` can

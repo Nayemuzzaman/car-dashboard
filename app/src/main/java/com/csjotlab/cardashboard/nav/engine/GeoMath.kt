@@ -2,6 +2,7 @@ package com.csjotlab.cardashboard.nav.engine
 
 import com.csjotlab.cardashboard.nav.domain.GeoPoint
 import kotlin.math.asin
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
@@ -89,6 +90,16 @@ object GeoMath {
             ay = by
         }
         return bestDistanceAlong
+    }
+
+    /** Initial great-circle bearing from [a] to [b], degrees clockwise from north, 0..360. */
+    fun bearingDegrees(a: GeoPoint, b: GeoPoint): Float {
+        val lat1 = Math.toRadians(a.latitude)
+        val lat2 = Math.toRadians(b.latitude)
+        val dLon = Math.toRadians(b.longitude - a.longitude)
+        val y = sin(dLon) * cos(lat2)
+        val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+        return HeadingMath.normalize(Math.toDegrees(atan2(y, x)).toFloat())
     }
 
     /** Distance from the origin (the query point) to segment `a-b`, in projected metres. */

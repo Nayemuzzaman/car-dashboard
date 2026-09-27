@@ -30,6 +30,8 @@ class ManeuverTypeTest {
                 "KeepLeft",
                 "KeepRight",
                 "Merge",
+                "RampLeft",
+                "RampRight",
                 "Unknown",
             ),
             subclasses,

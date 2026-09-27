@@ -50,6 +50,12 @@ class GpsLocationProvider(
         // would throw "Can't create handler inside thread that has not called Looper.prepare()",
         // so the main looper is named explicitly. A failure is logged, never silently swallowed.
         try {
+            // A real fix the phone took moments ago lets the map start where the car is instead of
+            // waiting for a fresh one; it keeps its true age, and anything older is not used.
+            locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let { last ->
+                val ageMs = (android.os.SystemClock.elapsedRealtimeNanos() - last.elapsedRealtimeNanos) / 1_000_000
+                if (ageMs in 0..MAX_LAST_KNOWN_AGE_MS) _readings.tryEmit(last.toReading(clock.nowMs() - ageMs))
+            }
             locationManager.requestLocationUpdates(
                 LocationManager.GPS_PROVIDER,
                 MIN_INTERVAL_MS,
@@ -74,6 +80,7 @@ class GpsLocationProvider(
             courseDegrees = if (modern && hasBearing()) bearing else null,
             accuracyMeters = if (modern && hasAccuracy()) accuracy else null,
             timestampMs = timestampMs,
+            courseAccuracyDegrees = if (modern && hasBearingAccuracy()) bearingAccuracyDegrees else null,
         )
     }
 
@@ -81,5 +88,6 @@ class GpsLocationProvider(
         const val TAG = "CarDash/Nav"
         const val MIN_INTERVAL_MS = 1_000L
         const val MIN_DISTANCE_METERS = 0f
+        const val MAX_LAST_KNOWN_AGE_MS = 60_000L
     }
 }

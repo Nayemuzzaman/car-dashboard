@@ -32,6 +32,25 @@ object ValhallaResponseParser {
             val root = Json.parseToJsonElement(json).jsonObject
             root["error"]?.jsonPrimitive?.contentOrNull?.let { return RouteResult.Failure("Valhalla: $it") }
             val trip = root["trip"]?.jsonObject ?: return RouteResult.Failure("No trip in Valhalla response")
+            when (val primary = parseTrip(trip)) {
+                is RouteResult.Success -> RouteResult.Success(
+                    route = primary.route,
+                    // An alternate that does not parse is simply not offered.
+                    alternatives = root["alternates"]?.jsonArray.orEmpty().mapNotNull { alternate ->
+                        runCatching {
+                            alternate.jsonObject["trip"]?.jsonObject?.let { (parseTrip(it) as? RouteResult.Success)?.route }
+                        }.getOrNull()
+                    },
+                )
+                is RouteResult.Failure -> primary
+            }
+        } catch (t: Throwable) {
+            RouteResult.Failure(t.message ?: "Unable to parse Valhalla response")
+        }
+    }
+
+    private fun parseTrip(trip: JsonObject): RouteResult {
+        return try {
             val summary = trip["summary"]?.jsonObject ?: return RouteResult.Failure("Valhalla response is missing summary")
             val lengthKm = summary["length"]?.jsonPrimitive?.doubleOrNull
                 ?: return RouteResult.Failure("Valhalla response is missing length")
@@ -65,7 +84,7 @@ object ValhallaResponseParser {
                 ),
             )
         } catch (t: Throwable) {
-            RouteResult.Failure(t.message ?: "Unable to parse Valhalla response")
+            RouteResult.Failure(t.message ?: "Unable to parse Valhalla trip")
         }
     }
 
@@ -102,8 +121,10 @@ object ValhallaResponseParser {
         14 -> ManeuverType.SharpLeft
         15 -> ManeuverType.TurnLeft
         16 -> ManeuverType.SlightLeft
-        18, 23 -> ManeuverType.KeepRight
-        19, 24 -> ManeuverType.KeepLeft
+        18 -> ManeuverType.RampRight
+        19 -> ManeuverType.RampLeft
+        23 -> ManeuverType.KeepRight
+        24 -> ManeuverType.KeepLeft
         20, 21 -> ManeuverType.Exit(exitNumber)
         25, 37, 38 -> ManeuverType.Merge
         26 -> ManeuverType.Roundabout(exitCount)

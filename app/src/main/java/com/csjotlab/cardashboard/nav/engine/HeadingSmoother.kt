@@ -43,18 +43,35 @@ class HeadingSmoother(
 }
 
 /**
- * Chooses which raw bearing is authoritative for the heading-up camera.
+ * Chooses which raw bearing is authoritative for the heading-up camera and the vehicle arrow.
  *
- * While moving, GPS course-over-ground is the truth about which way the car is facing. While
- * stationary, GPS course is meaningless, so the compass azimuth takes over. Either may be absent;
- * a null result means "no heading is known", which the caller surfaces as `Signal.Unknown`.
+ * While moving, GPS course-over-ground is the truth about which way the car is going. When the car
+ * stops, GPS course turns into noise — and the phone's compass says which way the *phone* faces,
+ * which in a car mount is unrelated to the car and is disturbed by the car's metal and electrics. So
+ * a stopped car keeps its **last reliable course**; the compass is only used before any course has
+ * been reliable (parked at the start of a trip), so the map is not arbitrarily north-up.
  */
 object HeadingSourcePolicy {
     const val GPS_COURSE_MIN_SPEED_MPS = 2.0f
+    const val MAX_COURSE_ACCURACY_DEGREES = 35f
 
-    fun select(speedMps: Float?, gpsCourseDegrees: Float?, compassDegrees: Float?): Float? = when {
-        speedMps != null && speedMps >= GPS_COURSE_MIN_SPEED_MPS && gpsCourseDegrees != null -> gpsCourseDegrees
-        compassDegrees != null -> compassDegrees
-        else -> null
+    fun isCourseReliable(speedMps: Float?, courseDegrees: Float?, courseAccuracyDegrees: Float?): Boolean =
+        speedMps != null && speedMps >= GPS_COURSE_MIN_SPEED_MPS && courseDegrees != null &&
+            (courseAccuracyDegrees == null || courseAccuracyDegrees <= MAX_COURSE_ACCURACY_DEGREES)
+
+    fun select(
+        speedMps: Float?,
+        gpsCourseDegrees: Float?,
+        courseAccuracyDegrees: Float?,
+        lastReliableCourseDegrees: Float?,
+        compassDegrees: Float?,
+    ): Float? = when {
+        isCourseReliable(speedMps, gpsCourseDegrees, courseAccuracyDegrees) -> gpsCourseDegrees
+        lastReliableCourseDegrees != null -> lastReliableCourseDegrees
+        else -> compassDegrees
     }
+
+    /** The choice with no history: course while moving, otherwise the compass. */
+    fun select(speedMps: Float?, gpsCourseDegrees: Float?, compassDegrees: Float?): Float? =
+        select(speedMps, gpsCourseDegrees, null, null, compassDegrees)
 }

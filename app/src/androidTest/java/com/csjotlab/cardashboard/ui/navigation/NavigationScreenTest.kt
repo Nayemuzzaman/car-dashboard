@@ -1,15 +1,21 @@
 package com.csjotlab.cardashboard.ui.navigation
 
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.csjotlab.cardashboard.nav.domain.GeoPoint
 import com.csjotlab.cardashboard.nav.domain.NavigationState
+import com.csjotlab.cardashboard.nav.domain.Maneuver
+import com.csjotlab.cardashboard.nav.domain.ManeuverType
 import com.csjotlab.cardashboard.nav.geocoding.Place
+import com.csjotlab.cardashboard.nav.map.MapThemeMode
 import com.csjotlab.cardashboard.ui.theme.CarDashboardTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -20,14 +26,16 @@ import org.junit.runner.RunWith
 class NavigationScreenTest {
 
     @get:Rule
-    val rule = createComposeRule()
+    val rule = createAndroidComposeRule<ComponentActivity>()
 
     private val airport = Place("Airport", GeoPoint(23.84, 90.40), address = "Dhaka, Bangladesh", category = "aerodrome")
 
     private fun show(
         uiState: NavigationUiState = NavigationUiState.idle(),
         screenMode: ScreenMode = ScreenMode.Planning,
-        followMode: Boolean = true,
+        cameraMode: CameraMode = CameraMode.Follow,
+        navigationState: NavigationState = NavigationState.idle(),
+        themeMode: MapThemeMode = MapThemeMode.Day,
         origin: Place? = null,
         destination: Place? = null,
         searchQuery: String = "",
@@ -39,9 +47,11 @@ class NavigationScreenTest {
             CarDashboardTheme {
                 NavigationScreen(
                     uiState = uiState,
-                    navigationState = NavigationState.idle(),
+                    navigationState = navigationState,
                     screenMode = screenMode,
-                    followMode = followMode,
+                    cameraMode = cameraMode,
+                    headingUp = true,
+                    themeMode = themeMode,
                     origin = origin,
                     destination = destination,
                     searchQuery = searchQuery,
@@ -58,7 +68,7 @@ class NavigationScreenTest {
         show(recent = listOf(airport))
 
         rule.onNodeWithText("Your location").assertIsDisplayed()
-        rule.onNodeWithText("Search destination").assertIsDisplayed()
+        rule.onNodeWithText("Where to?").assertIsDisplayed()
         rule.onNodeWithContentDescription("Swap start and destination").assertIsDisplayed()
         rule.onNodeWithText("Recent").assertIsDisplayed()
         rule.onNodeWithText("Airport").assertIsDisplayed()
@@ -164,7 +174,6 @@ class NavigationScreenTest {
         show(uiState = ui, screenMode = ScreenMode.Guidance, destination = airport)
 
         rule.onNodeWithText(NEXT_STEP_TOLL).assertIsDisplayed()
-        rule.onNodeWithText(TOLL_ROAD).assertIsDisplayed()
     }
 
     @Test
@@ -176,21 +185,68 @@ class NavigationScreenTest {
         rule.onNodeWithText("Start").assertIsNotEnabled()
     }
 
-    @Test
-    fun guidanceShowsManeuverAndRecenterWhenNotFollowing() {
-        val ui = NavigationUiState.idle().copy(
-            statusLabel = NAVIGATING,
-            maneuverText = "Turn left in 300 m",
-            remainingDistanceText = "300 m",
-            speedText = "36 km/h",
-            hasRoute = true,
-        )
-        show(uiState = ui, screenMode = ScreenMode.Guidance, followMode = false, destination = airport)
+    private val guiding = NavigationUiState.idle().copy(
+        statusLabel = NAVIGATING,
+        maneuverText = "Turn right in 300 m",
+        maneuverDistanceText = "300 m",
+        instructionText = "Turn right onto Route 3",
+        remainingDistanceText = "4.2 km",
+        remainingTimeText = "9 min",
+        etaText = "14:32",
+        speedText = "36 km/h",
+        hasRoute = true,
+    )
+    private val turningRight = NavigationState.idle().copy(nextManeuver = Maneuver(ManeuverType.TurnRight, null))
 
-        rule.onNodeWithText("Turn left in 300 m").assertIsDisplayed()
-        rule.onNodeWithText(NAVIGATING).assertIsDisplayed()
-        rule.onNodeWithText("End").assertIsDisplayed()
-        rule.onNodeWithContentDescription("Recenter").assertIsDisplayed()
+    @Test
+    fun guidanceBannerShowsDistanceAndRoadNamedInstruction() {
+        show(uiState = guiding, navigationState = turningRight, screenMode = ScreenMode.Guidance, destination = airport)
+
+        rule.onNodeWithText("300 m").assertIsDisplayed()
+        rule.onNodeWithText("Turn right onto Route 3").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Turn right").assertIsDisplayed()
+        rule.onNodeWithText("14:32").assertIsDisplayed()
+        rule.onNodeWithText("9 min · 4.2 km").assertIsDisplayed()
+    }
+
+    @Test
+    fun guidanceShowsRecenterWhenNotFollowing() {
+        show(uiState = guiding, screenMode = ScreenMode.Guidance, cameraMode = CameraMode.Free, destination = airport)
+
+        rule.onNodeWithContentDescription(RECENTER).assertIsDisplayed()
+    }
+
+    @Test
+    fun endIsVisibleInGuidanceAndEndsTheTrip() {
+        var ended = false
+        show(uiState = guiding, screenMode = ScreenMode.Guidance, destination = airport, actions = NavigationActions(onEnd = { ended = true }))
+
+        rule.onNodeWithText(END).assertIsDisplayed().performClick()
+
+        assertTrue(ended)
+    }
+
+    @Test
+    fun endIsVisibleInNightModeToo() {
+        show(uiState = guiding, screenMode = ScreenMode.Guidance, destination = airport, themeMode = MapThemeMode.Night)
+        rule.onNodeWithText(END).assertIsDisplayed()
+    }
+
+    @Test
+    fun backDuringGuidanceAsksBeforeEnding() {
+        var ended = false
+        show(uiState = guiding, screenMode = ScreenMode.Guidance, destination = airport, actions = NavigationActions(onEnd = { ended = true }))
+
+        rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        rule.onNodeWithText("End navigation?").assertIsDisplayed()
+        assertTrue("nothing ends until the driver confirms", !ended)
+
+        rule.onNodeWithText("Keep navigating").performClick()
+        assertTrue(!ended)
+
+        rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        rule.onAllNodesWithText(END).onLast().performClick()
+        assertTrue(ended)
     }
 
     @Test

@@ -66,7 +66,7 @@ class ValhallaResponseParserTest {
         assertEquals(listOf(shapePoints[0], shapePoints[1]).map { it.latitude }, route.steps[0].geometry.map { it.latitude })
         assertFalse(route.steps[0].toll)
 
-        assertEquals(ManeuverType.KeepLeft, route.steps[1].maneuver.type)
+        assertEquals(ManeuverType.RampLeft, route.steps[1].maneuver.type)
         assertTrue(route.steps[1].toll)
         assertEquals("Kitakyusyu Expressway Route 2", route.steps[1].roadName)
 
@@ -95,7 +95,7 @@ class ValhallaResponseParserTest {
         assertEquals(ManeuverType.SlightRight, map(9)); assertEquals(ManeuverType.TurnRight, map(10)); assertEquals(ManeuverType.SharpRight, map(11))
         assertEquals(ManeuverType.UTurn, map(12)); assertEquals(ManeuverType.UTurn, map(13))
         assertEquals(ManeuverType.SharpLeft, map(14)); assertEquals(ManeuverType.TurnLeft, map(15)); assertEquals(ManeuverType.SlightLeft, map(16))
-        assertEquals(ManeuverType.KeepRight, map(18)); assertEquals(ManeuverType.KeepLeft, map(19))
+        assertEquals(ManeuverType.RampRight, map(18)); assertEquals(ManeuverType.RampLeft, map(19))
         assertEquals(ManeuverType.Exit(null), map(20)); assertEquals(ManeuverType.Exit(null), map(21))
         assertEquals(ManeuverType.KeepRight, map(23)); assertEquals(ManeuverType.KeepLeft, map(24))
         assertEquals(ManeuverType.Merge, map(25)); assertEquals(ManeuverType.Merge, map(37)); assertEquals(ManeuverType.Merge, map(38))
