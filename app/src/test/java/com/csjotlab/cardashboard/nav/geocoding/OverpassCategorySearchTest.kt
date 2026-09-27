@@ -64,6 +64,7 @@ class OverpassResponseParserTest {
         assertEquals(listOf("FamilyMart", "Lawson", "Convenience store"), places.map { it.name })
         assertEquals("八幡本城店, 北九州市", places[0].address)
         assertTrue(places.all { it.category == "convenience" })
+        assertEquals(listOf("FamilyMart", "Lawson", null), places.map { it.brand })
     }
 }
 

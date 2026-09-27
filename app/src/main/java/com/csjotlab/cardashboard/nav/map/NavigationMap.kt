@@ -2,6 +2,7 @@ package com.csjotlab.cardashboard.nav.map
 
 import com.csjotlab.cardashboard.nav.domain.GeoPoint
 import com.csjotlab.cardashboard.nav.domain.Route
+import com.csjotlab.cardashboard.nav.geocoding.StoreBrand
 
 enum class MapStyle { Day, Night }
 
@@ -38,7 +39,7 @@ interface NavigationMap {
     fun updateVehicle(marker: VehicleMarker?)
 
     fun showDestination(point: GeoPoint?)
-    fun showSearchResults(points: List<GeoPoint>)
+    fun showSearchResults(pins: List<SearchPin>)
 
     /**
      * Keep the camera on the vehicle — heading-up (tilted, road ahead at the top) or north-up —
@@ -77,3 +78,6 @@ interface NavigationMap {
     /** The map's bearing whenever the camera moves, for the compass. */
     fun setBearingListener(listener: (Float) -> Unit)
 }
+
+/** A search result on the map: a chain's badge when [brand] is known, otherwise a plain dot. */
+data class SearchPin(val point: GeoPoint, val brand: StoreBrand? = null)

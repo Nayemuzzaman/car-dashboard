@@ -99,7 +99,13 @@ object OverpassResponseParser {
         val street = tag("addr:street")?.let { street -> tag("addr:housenumber")?.let { "$street $it" } ?: street }
         val address = listOfNotNull(tag("branch"), street, tag("addr:city"))
             .joinToString(", ").takeIf { it.isNotBlank() }
-        return Place(name = name, point = GeoPoint(lat, lon), address = address, category = category.osmTag.substringAfter(':'))
+        return Place(
+            name = name,
+            point = GeoPoint(lat, lon),
+            address = address,
+            category = category.osmTag.substringAfter(':'),
+            brand = tag("brand:en") ?: tag("brand"),
+        )
     }
 }
 

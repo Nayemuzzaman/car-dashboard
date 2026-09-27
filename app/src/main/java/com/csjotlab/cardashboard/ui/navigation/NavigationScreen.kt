@@ -49,11 +49,13 @@ import com.csjotlab.cardashboard.nav.engine.NavigationCameraPolicy
 import com.csjotlab.cardashboard.nav.engine.RouteIndex
 import com.csjotlab.cardashboard.nav.geocoding.Place
 import com.csjotlab.cardashboard.nav.geocoding.PlaceCategory
+import com.csjotlab.cardashboard.nav.geocoding.StoreBrand
 import com.csjotlab.cardashboard.nav.map.ConfigurableMapStyleProvider
 import com.csjotlab.cardashboard.nav.map.MapInsets
 import com.csjotlab.cardashboard.nav.map.MapLibreNavigationMap
 import com.csjotlab.cardashboard.nav.map.MapStyle
 import com.csjotlab.cardashboard.nav.map.MapThemeMode
+import com.csjotlab.cardashboard.nav.map.SearchPin
 import com.csjotlab.cardashboard.nav.map.VehicleMarker
 import com.csjotlab.cardashboard.vehicle.domain.valueOrNull
 import org.maplibre.android.maps.MapView
@@ -184,8 +186,12 @@ fun NavigationScreen(
     val destinationPoint = destination?.point
     LaunchedEffect(navigationMap, destinationPoint) { navigationMap?.showDestination(destinationPoint) }
 
-    val resultPoints = if (screenMode == ScreenMode.Planning) search.results.map { it.place.point } else emptyList()
-    LaunchedEffect(navigationMap, resultPoints) { navigationMap?.showSearchResults(resultPoints) }
+    val resultPins = if (screenMode == ScreenMode.Planning) {
+        search.results.map { SearchPin(it.place.point, StoreBrand.match(it.place.brand, it.place.name)) }
+    } else {
+        emptyList()
+    }
+    LaunchedEffect(navigationMap, resultPins) { navigationMap?.showSearchResults(resultPins) }
 
     NavThemeRoot(colors = colors, modifier = modifier) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize().background(colors.panelVariant)) {
@@ -203,7 +209,7 @@ fun NavigationScreen(
             // right; following does not, so the car stays centred.
             val fitInsets = insets.copy(right = with(density) { ControlsColumnWidth.roundToPx() })
             val hasPosition = position != null
-            val categoryFitKey = if (activeCategory != null) resultPoints else emptyList()
+            val categoryFitKey = if (activeCategory != null) resultPins.map { it.point } else emptyList()
             // Only a following camera cares about the speed-based zoom; a fitted overview must not
             // re-animate every time the speed changes.
             val followZoomKey = if (cameraMode == CameraMode.Follow) zoomKey else 0

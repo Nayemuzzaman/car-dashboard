@@ -9,6 +9,8 @@ data class Place(
     val address: String? = null,
     /** OSM feature value, e.g. "aerodrome", "station", "restaurant". */
     val category: String? = null,
+    /** OSM brand, e.g. "FamilyMart"; lets the map draw a chain's badge. Not persisted in recents. */
+    val brand: String? = null,
 )
 
 sealed interface GeocodeResult {
