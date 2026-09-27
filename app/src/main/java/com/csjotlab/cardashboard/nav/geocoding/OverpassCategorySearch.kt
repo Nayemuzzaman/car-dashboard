@@ -93,8 +93,11 @@ object OverpassResponseParser {
         val lon = (element["lon"] ?: center?.get("lon"))?.jsonPrimitive?.doubleOrNull ?: return null
         val tags = element["tags"]?.jsonObject ?: JsonObject(emptyMap())
         fun tag(key: String) = tags[key]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-        val name = tag("name:en") ?: tag("name") ?: tag("brand") ?: category.singular
-        val address = listOfNotNull(tag("addr:street")?.let { street -> tag("addr:housenumber")?.let { "$street $it" } ?: street }, tag("addr:city"))
+        // The English brand ("FamilyMart", "Lawson") beats a local-script name the driver may not read;
+        // the branch ("八幡本城店") then tells two stores of the same chain apart.
+        val name = tag("name:en") ?: tag("brand:en") ?: tag("name") ?: tag("brand") ?: category.singular
+        val street = tag("addr:street")?.let { street -> tag("addr:housenumber")?.let { "$street $it" } ?: street }
+        val address = listOfNotNull(tag("branch"), street, tag("addr:city"))
             .joinToString(", ").takeIf { it.isNotBlank() }
         return Place(name = name, point = GeoPoint(lat, lon), address = address, category = category.osmTag.substringAfter(':'))
     }

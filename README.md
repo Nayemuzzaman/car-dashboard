@@ -174,9 +174,10 @@ at self-hosted instances for production use.
 
 **Planning.** A **Where to?** field (with a **Your location** start row and ⇅ swap) searches as you
 type — places, addresses, stations, POIs, and typed coordinates (`23.8103, 90.4125`, `33.59°N
-130.4°E`, answered locally without a network call). One-tap chips find **Fuel, Parking, Food,
-Hospital, Charging, Hotel** near you — every OSM place of that kind within 5 km (25 km if fewer than
-three), nearest first — and drop them on the map. Tapping the map
+130.4°E`, answered locally without a network call). One-tap chips find **Fuel, Convenience, Parking,
+Food, Hospital, Charging, Hotel** near you — every OSM place of that kind within 5 km (25 km if fewer than
+three), nearest first — and drop them on the map. Chain stores show their English brand
+(FamilyMart, Lawson, 7-Eleven) with the branch name underneath. Tapping the map
 picks a destination and names it by reverse geocoding. Recent places are kept.
 
 **Overview.** The camera moves to the destination, drops a pin, and fits the route once it arrives.
@@ -236,7 +237,7 @@ Screenshots: [nav-planning](docs/screenshots/nav-planning.png), [nav-search](doc
 **Verified on emulator (2026-09-16, v1.1):** OSM tiles render; Photon search returns nearby named places
 with distances; Valhalla road routes draw and fit; Kitakyushu → Hakata shows **Toll road · via E3**
 (77 km, 1 h 10 min) and **Avoid tolls** re-routes to **Toll-free · via 199** (71 km, 2 h 1 min).
-**v2 (2026-09-27)** is verified by 566 JVM tests — including a simulated trip through several turns,
+**v2 (2026-09-27)** is verified by 568 JVM tests — including a simulated trip through several turns,
 a missed turn, one reroute from the car, and arrival — and 59 instrumented UI tests (End visible and
 working in day and night, Back asks before ending, banner content). On an arm64 emulator (API 37)
 a Fukuoka → Kitakyushu route from the live Valhalla server was driven with `adb emu geo fix`: the
@@ -298,7 +299,7 @@ adb logcat -s CarDash/Vehicle
 ## Testing
 
 ```bash
-./gradlew testDebugUnitTest          # 566 JVM unit tests
+./gradlew testDebugUnitTest          # 568 JVM unit tests
 ./gradlew connectedDebugAndroidTest  # 59 instrumented tests (needs a device or emulator)
 ```
 

@@ -22,6 +22,7 @@ sealed interface GeocodeResult {
  */
 enum class PlaceCategory(val label: String, val query: String, val osmTag: String, val singular: String) {
     Fuel("Fuel", "fuel station", "amenity:fuel", "Fuel station"),
+    Convenience("Convenience", "convenience store", "shop:convenience", "Convenience store"),
     Parking("Parking", "parking", "amenity:parking", "Parking"),
     Food("Food", "restaurant", "amenity:restaurant", "Restaurant"),
     Hospital("Hospital", "hospital", "amenity:hospital", "Hospital"),

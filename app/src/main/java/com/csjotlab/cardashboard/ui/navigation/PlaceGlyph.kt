@@ -12,7 +12,8 @@ fun placeGlyph(category: String?): String = when (category) {
     "parking", "parking_entrance" -> "🅿"
     "hospital", "clinic", "doctors", "pharmacy", "dentist" -> "🏥"
     "hotel", "motel", "hostel", "guest_house", "apartment" -> "🏨"
-    "supermarket", "mall", "marketplace", "convenience", "department_store" -> "🛒"
+    "convenience" -> "🏪"
+    "supermarket", "mall", "marketplace", "department_store" -> "🛒"
     "school", "university", "college", "kindergarten" -> "🎓"
     "bank", "atm" -> "🏦"
     "place_of_worship", "mosque", "church", "temple", "synagogue" -> "🛐"
@@ -21,4 +22,11 @@ fun placeGlyph(category: String?): String = when (category) {
     "unclassified", "service", "road", "pedestrian", "footway", "path", "motorway_link",
     "trunk_link", "primary_link", "secondary_link", "tertiary_link" -> "🛣"
     else -> "📍"
+}
+
+/** The OSM feature value as a row subtitle: "convenience" → "Convenience store", "bus_stop" → "Bus stop". */
+fun placeKindLabel(category: String?): String? = when (category) {
+    null, "" -> null
+    "convenience" -> "Convenience store"
+    else -> category.replace('_', ' ').replaceFirstChar { it.uppercaseChar() }
 }
