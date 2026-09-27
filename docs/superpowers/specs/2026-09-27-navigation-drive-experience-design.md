@@ -70,7 +70,7 @@ behave like a vehicle navigation system.
   toward the policy target (time constant 1.2 s). A gesture drops to `Free` synchronously inside the
   map callback so the next frame never fights the finger.
 - Layers: alternatives (gray, under), route casing + remaining (blue), traveled (gray), destination
-  pin, search-result dots, vehicle arrow (`icon-rotation-alignment=map`, `icon-pitch-alignment=map`),
+  pin, search-result dots, vehicle car, a top-down car drawn in code with its nose north and rotated by the bearing (`icon-rotation-alignment=map`, `icon-pitch-alignment=map`),
   accuracy halo. The puck is gray when GPS is `Poor`/`Lost`.
 - The route split (traveled/remaining) is updated at fix rate at the fix the puck is animating
   **from**, so the boundary stays under or behind the car.
