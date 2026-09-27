@@ -59,7 +59,10 @@ class NavigationViewModelTest {
         totalDurationSeconds = 90L,
     )
 
-    private fun fix(point: GeoPoint) = LocationReading(point, speedMps = 3f, courseDegrees = 90f, accuracyMeters = null, timestampMs = 0L)
+    private var fixTime = 0L
+
+    /** Each fix is a new reading, a minute after the last, as a real receiver would stamp them. */
+    private fun fix(point: GeoPoint) = LocationReading(point, speedMps = 3f, courseDegrees = 90f, accuracyMeters = null, timestampMs = 60_000L * ++fixTime)
 
     private class Harness(
         val viewModel: NavigationViewModel,

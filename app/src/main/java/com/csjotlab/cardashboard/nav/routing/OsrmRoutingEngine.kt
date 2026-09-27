@@ -42,7 +42,7 @@ class OsrmRoutingEngine(
     private fun url(request: RouteRequest): String {
         fun lonLat(p: GeoPoint) = "${p.longitude},${p.latitude}"
         return "$baseUrl/route/v1/$profile/${lonLat(request.origin)};${lonLat(request.destination)}" +
-            "?overview=full&geometries=geojson&steps=true"
+            "?overview=full&geometries=geojson&steps=true&alternatives=true"
     }
 
     private companion object {

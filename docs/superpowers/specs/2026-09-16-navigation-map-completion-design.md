@@ -1,7 +1,7 @@
 # In-App Navigation / Map — Completion (v1.1) — Design
 
 Date: 2026-09-16
-Status: Implemented; emulator-verified 2026-09-16 (see README "Navigation")
+Status: Implemented; emulator-verified 2026-09-16. Superseded in part by `2026-09-27-navigation-drive-experience-design.md` (v2).
 Amends: `2026-09-13-in-app-navigation-map-design.md` (v1). Everything not mentioned here is unchanged.
 Scope: make the navigation screen usable end-to-end on a real phone with no infrastructure —
 street-level OpenStreetMap tiles, road routing from a public open server, search-as-you-type with

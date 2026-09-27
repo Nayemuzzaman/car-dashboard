@@ -166,36 +166,93 @@ No account, key, or server is needed:
 | Fallback routing | [OSRM](https://project-osrm.org) public demo server (no toll data) | `-PosrmBaseUrl=…` |
 | Optional routing | Self-hosted [GraphHopper](https://www.graphhopper.com/open-source/) — tried first when set | `-ProutingBaseUrl=http://<host>:8989` |
 | Search / reverse | [Photon](https://photon.komoot.io) (komoot's open OSM geocoder) | `-PgeocodingBaseUrl=…` |
+| Nearby places (Fuel, Parking, …) | [Overpass API](https://overpass-api.de) — OSM tags within 5–25 km of the car; three public servers queried in parallel, first answer wins | `-PoverpassBaseUrls=a,b,…` |
 
 Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL). The
 public Valhalla, OSRM and Photon endpoints are community services with no SLA; point the overrides
 at self-hosted instances for production use.
 
-**Planning** works like a maps app: a **● Your location** row and a **◉ Choose destination** row
-with a ⇅ swap button. Tap a row to make it the search field — results appear after two characters,
-ranked near your GPS fix, each with a category glyph, address and distance; with nothing typed, your
-recent places are listed. Tapping the map drops a destination and names it by reverse geocoding.
+**Planning.** A **Where to?** field (with a **Your location** start row and ⇅ swap) searches as you
+type — places, addresses, stations, POIs, and typed coordinates (`23.8103, 90.4125`, `33.59°N
+130.4°E`, answered locally without a network call). One-tap chips find **Fuel, Parking, Food,
+Hospital, Charging, Hotel** near you — every OSM place of that kind within 5 km (25 km if fewer than
+three), nearest first — and drop them on the map. Tapping the map
+picks a destination and names it by reverse geocoding. Recent places are kept.
 
-**Overview** fits the whole route on screen with distance, time, ETA, the main road ("via E3") and a
-toll badge: **Toll road**, **Toll-free**, or **Toll info unavailable** when the router in use cannot
-say (OSRM fallback, straight-line preview) — it never guesses "free". The **Avoid tolls** switch
-re-routes with Valhalla's toll avoidance; if tolls remain unavoidable the badge says so. Press
-**Start** for **Guidance**: heading-up camera, a turn glyph and phrase ("Turn left in 300 m"), a
-**Toll ahead** tag when the next road is tolled, automatic rerouting when you leave the route (at
-most once per 25 m of movement, so a car parked beside the road does not poll the router), **◎** to
-recenter after panning, **End** to finish. If every router is unreachable the app draws a straight
-line and labels it **Straight-line preview** — it never presents a straight line as a road route.
+**Overview.** The camera moves to the destination, drops a pin, and fits the route once it arrives.
+When the router offers alternatives (Valhalla `alternates`, OSRM `alternatives`), each appears as a
+card with time, distance, main road and toll status; the others are drawn in grey. Toll badge and
+**Avoid tolls** work as before. If no route can be found, **Retry** replaces **Start**.
+
+**Guidance** is laid out for driving: the **maneuver banner** at the top (vector turn arrow, distance
+such as **300 m**, and the instruction with the road name — *Turn right onto Route 3* — plus a
+*Then ↰* preview when the next turn follows closely); the **map** in the middle; and a **trip bar** at
+the bottom with the arrival time, time and distance left, route overview, and a large red **End**
+button. Speed and the current road are shown above the trip bar. System **Back** asks *End
+navigation?* instead of silently leaving. The screen stays on while guiding.
+
+- **The map follows the car.** A direction arrow shows which way the vehicle is travelling. The
+  camera is heading-up and tilted, with the car low on the screen so the road ahead is visible;
+  the compass button switches between heading-up and north-up. The marker glides between GPS fixes
+  and the camera moves with it on the same animation frame, so nothing steps once a second.
+  Zoom widens with speed and closes in before a turn.
+- **Stable heading.** Direction comes from the GPS course while moving. A stopped car keeps its last
+  reliable direction; the phone compass (which in a car mount says where the *phone* points) is used
+  only before any course is known. When the chip reports no course, it is derived from successive
+  fixes once the car has moved 8 m.
+- **Your gestures win.** Pan, pinch, rotate, tilt or double-tap stops following immediately;
+  **◎ Recenter** returns to the car at the automatic zoom and orientation.
+- **Progress.** The driven part of the route turns grey; instructions advance as each maneuver is
+  passed. Progress is tracked in a window ahead of the last position, so a road that doubles back
+  on itself cannot make the instructions jump.
+- **Rerouting.** Leaving the route needs 3 consecutive fixes **and** 4 seconds beyond
+  `max(30 m, 1.5 × GPS accuracy)` (fixes worse than 50 m are ignored), so one bad fix never reroutes.
+  The banner shows *Rerouting…*, the new route starts at the car and replaces the old one. If the
+  router is unreachable the current route is kept (*Unable to reroute*) and retried after 15 s once
+  the car has moved on.
+- **GPS problems are shown, not hidden.** Fixes worse than 100 m and physically impossible jumps are
+  rejected; a parked car does not drift. *Weak GPS signal* or *GPS signal lost* appears under the
+  banner and the arrow turns grey. In a tunnel the last progress, instruction and ETA are held —
+  the marker is never moved by guesswork.
+- **Day / night.** The map, route colours and every panel switch together. **Auto** follows the sun at
+  the car's position; the ☀/☾/A button forces day or night. All panel text meets WCAG AA contrast
+  in both themes (primary text ≥ 7:1).
+- **Screen off / other apps.** While guiding, a foreground service of type `location` keeps GPS
+  running and shows the next instruction in a notification with an **End** action. It is started
+  only from the foreground when you press Start, so background-location permission is not requested.
+  GPS and compass are otherwise on only while the navigation screen is visible.
+
+**Vehicle data.** `nav/vehicle/VehicleDataProvider` is the seam for vehicle signals (speed, heading,
+gear, ignition). The one implementation forwards **speed and gear** from the dashboard's OBD-II source
+(used to decide "stationary" when the GPS reports no speed). OBD-II has no heading or ignition PID,
+so those stay unknown rather than being inferred, and data from the simulated MOCK source is ignored.
+Navigation works fully on Android location alone; AAOS `CarPropertyManager`, CAN or OEM sources can be
+added behind the same interface.
 
 Screenshots: [nav-planning](docs/screenshots/nav-planning.png), [nav-search](docs/screenshots/nav-search.png),
-[nav-overview](docs/screenshots/nav-overview.png), [nav-guidance](docs/screenshots/nav-guidance.png).
+[nav-overview](docs/screenshots/nav-overview.png), [nav-guidance](docs/screenshots/nav-guidance.png)
+(v1.1; not yet retaken for the v2 layout).
 
-**Verified on emulator (2026-09-16):** OSM tiles render; Photon search returns nearby named places
+**Verified on emulator (2026-09-16, v1.1):** OSM tiles render; Photon search returns nearby named places
 with distances; Valhalla road routes draw and fit; Kitakyushu → Hakata shows **Toll road · via E3**
-(77 km, 1 h 10 min) and **Avoid tolls** re-routes to **Toll-free · via 199** (71 km, 2 h 1 min);
-guidance follows simulated `adb emu geo fix` drives to arrival; map tap is reverse-geocoded to a name;
-recenter after pan; recents persist across restart. **Verified on a Pixel 7a:** install, live GPS fix,
-night tiles, planner. **Not verified:** a real vehicle drive with live GPS course and compass (the
-emulator supplies neither, so the heading-up rotation is exercised only by unit tests).
+(77 km, 1 h 10 min) and **Avoid tolls** re-routes to **Toll-free · via 199** (71 km, 2 h 1 min).
+**v2 (2026-09-27)** is verified by 566 JVM tests — including a simulated trip through several turns,
+a missed turn, one reroute from the car, and arrival — and 59 instrumented UI tests (End visible and
+working in day and night, Back asks before ending, banner content). On an arm64 emulator (API 37)
+a Fukuoka → Kitakyushu route from the live Valhalla server was driven with `adb emu geo fix`: the
+map turned heading-up with the road ahead at the top, the route split into driven/ahead, instructions
+advanced (*Turn left onto 昭和通り* → *Turn right onto 渡辺通り* → *Take the ramp on the right*),
+*Toll ahead* appeared, and **End** returned to planning; the notification's **End** stops the
+service and removes the notification.
+
+**Verified on a Pixel 7a (Android 16, 2026-09-27, indoors in Kitakyushu):** installed as an in-place
+update (recents kept); live GPS fix (8–15 m) centres the map with the direction arrow, greyed when
+the signal weakens; Auto picked night after sunset; **Fuel** lists real stations nearest first
+(751 m, ENEOS 3.1 km, Showa Shell…) with pins; overview offers route alternatives; guidance shows the
+banner, ETA and **End**; dragging the map stops following and **Recenter** restores it; with the
+screen off the guidance service keeps high-accuracy GPS and the notification shows *50 m · Turn
+right / Arrive 20:25 · 814 m* with **End**. **Not yet verified:** an actual drive (heading-up
+rotation from live GPS course, rerouting on real roads, arrival).
 
 ## Platform support
 
@@ -241,8 +298,8 @@ adb logcat -s CarDash/Vehicle
 ## Testing
 
 ```bash
-./gradlew testDebugUnitTest          # 468 JVM unit tests
-./gradlew connectedDebugAndroidTest  # 55 instrumented tests (needs a device or emulator)
+./gradlew testDebugUnitTest          # 566 JVM unit tests
+./gradlew connectedDebugAndroidTest  # 59 instrumented tests (needs a device or emulator)
 ```
 
 Unit tests cover the `Signal` contract, state validation, unit formatting, the ELM327 session

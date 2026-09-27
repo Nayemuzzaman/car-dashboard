@@ -34,6 +34,14 @@ class PhotonGeocodingEngine(
         return get("$baseUrl/api/?q=$encoded&limit=$LIMIT&lang=$language$bias")
     }
 
+    override suspend fun searchCategory(category: PlaceCategory, near: GeoPoint?): GeocodeResult {
+        val encoded = URLEncoder.encode(category.query, "UTF-8")
+        // A strong location bias: for "fuel" the nearest station matters, not the most famous one.
+        val bias = near?.let { "&lat=${it.latitude}&lon=${it.longitude}&location_bias_scale=0.1&zoom=14" }.orEmpty()
+        val tag = URLEncoder.encode(category.osmTag, "UTF-8")
+        return get("$baseUrl/api/?q=$encoded&osm_tag=$tag&limit=$CATEGORY_LIMIT&lang=$language$bias")
+    }
+
     override suspend fun reverse(point: GeoPoint): Place? =
         when (val result = get("$baseUrl/reverse?lat=${point.latitude}&lon=${point.longitude}&lang=$language")) {
             is GeocodeResult.Success -> result.places.firstOrNull()
@@ -60,6 +68,7 @@ class PhotonGeocodingEngine(
 
     private companion object {
         const val LIMIT = 8
+        const val CATEGORY_LIMIT = 12
     }
 }
 

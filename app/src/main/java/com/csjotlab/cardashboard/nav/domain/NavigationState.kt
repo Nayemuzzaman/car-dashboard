@@ -27,6 +27,24 @@ data class NavigationState(
     val etaMs: Signal<Long>?,
     val offRoute: Boolean,
     val rerouteState: RerouteState,
+    /** Distance to [nextManeuver] in metres, shown large on the banner. */
+    val distanceToManeuverMeters: Float? = null,
+    /** The banner instruction without distance, e.g. "Turn right onto Route 3". */
+    val maneuverInstruction: String? = null,
+    /** The road currently driven, when the router named it. */
+    val currentRoadName: String? = null,
+    /** The maneuver right after [nextManeuver] when it follows closely ("Then ↰"). */
+    val thenManeuver: Maneuver? = null,
+    /** Progress along the route geometry; splits the drawn route into driven and ahead. */
+    val distanceAlongRouteMeters: Float? = null,
+    /**
+     * Where to draw the vehicle: the fix matched onto the route when it is within a few metres of
+     * it, otherwise the fix itself; the last known position while the signal is lost. Rendering
+     * only — [location] remains the unmodified filtered fix.
+     */
+    val displayLocation: GeoPoint? = null,
+    val gpsQuality: GpsQuality = GpsQuality.None,
+    val accuracyMeters: Float? = null,
 ) {
     companion object {
         fun idle(): NavigationState = NavigationState(

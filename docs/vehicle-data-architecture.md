@@ -424,8 +424,8 @@ later without touching the UI contract.
 Commands:
 
 ```bash
-./gradlew testDebugUnitTest          # 468 unit tests
-./gradlew connectedDebugAndroidTest  # 55 instrumented tests, needs a device
+./gradlew testDebugUnitTest          # 566 unit tests
+./gradlew connectedDebugAndroidTest  # 59 instrumented tests, needs a device
 ./gradlew assembleDebug assembleRelease
 ```
 

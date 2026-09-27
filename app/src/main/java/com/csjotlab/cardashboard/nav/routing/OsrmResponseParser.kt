@@ -38,7 +38,23 @@ object OsrmResponseParser {
             val routes = root["routes"]?.jsonArray ?: return RouteResult.Failure("No routes in OSRM response")
             if (routes.isEmpty()) return RouteResult.Failure("No route in OSRM response")
 
-            val route = routes[0].jsonObject
+            when (val primary = parseRoute(routes[0].jsonObject)) {
+                is RouteResult.Success -> RouteResult.Success(
+                    route = primary.route,
+                    // An alternative that does not parse is simply not offered.
+                    alternatives = routes.drop(1).mapNotNull {
+                        runCatching { (parseRoute(it.jsonObject) as? RouteResult.Success)?.route }.getOrNull()
+                    },
+                )
+                is RouteResult.Failure -> primary
+            }
+        } catch (t: Throwable) {
+            RouteResult.Failure(t.message ?: "Unable to parse OSRM response")
+        }
+    }
+
+    private fun parseRoute(route: JsonObject): RouteResult {
+        return try {
             val distanceMeters = route["distance"]?.jsonPrimitive?.doubleOrNull
                 ?: return RouteResult.Failure("OSRM response is missing distance")
             val durationSeconds = route["duration"]?.jsonPrimitive?.doubleOrNull
@@ -65,7 +81,7 @@ object OsrmResponseParser {
                 ),
             )
         } catch (t: Throwable) {
-            RouteResult.Failure(t.message ?: "Unable to parse OSRM response")
+            RouteResult.Failure(t.message ?: "Unable to parse OSRM route")
         }
     }
 
@@ -97,7 +113,12 @@ object OsrmResponseParser {
         "arrive" -> ManeuverType.Arrive
         "roundabout", "rotary", "roundabout turn" -> ManeuverType.Roundabout(exit)
         "exit roundabout", "exit rotary" -> ManeuverType.Continue
-        "fork", "on ramp" -> when (side(modifier)) {
+        "on ramp" -> when (side(modifier)) {
+            Side.Left -> ManeuverType.RampLeft
+            Side.Right -> ManeuverType.RampRight
+            Side.Straight -> ManeuverType.Continue
+        }
+        "fork" -> when (side(modifier)) {
             Side.Left -> ManeuverType.KeepLeft
             Side.Right -> ManeuverType.KeepRight
             Side.Straight -> ManeuverType.Continue

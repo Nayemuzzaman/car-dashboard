@@ -13,7 +13,7 @@ class ManeuverGlyphTest {
         ManeuverType.TurnLeft, ManeuverType.TurnRight, ManeuverType.SlightLeft, ManeuverType.SlightRight,
         ManeuverType.SharpLeft, ManeuverType.SharpRight, ManeuverType.UTurn,
         ManeuverType.Roundabout(2), ManeuverType.Exit("12"), ManeuverType.KeepLeft, ManeuverType.KeepRight,
-        ManeuverType.Merge, ManeuverType.Unknown,
+        ManeuverType.Merge, ManeuverType.RampLeft, ManeuverType.RampRight, ManeuverType.Unknown,
     )
 
     @Test

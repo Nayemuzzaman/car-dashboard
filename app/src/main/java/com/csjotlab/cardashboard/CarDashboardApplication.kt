@@ -9,7 +9,10 @@ import kotlinx.coroutines.NonCancellable
 import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import com.csjotlab.cardashboard.nav.vehicle.VehicleRepositoryDataProvider
 
 class CarDashboardApplication : Application() {
 
@@ -43,14 +46,15 @@ class CarDashboardApplication : Application() {
 
     /**
      * Built lazily the first time the navigation screen asks for it, and rebuilt after shutdown.
-     * Building it is what starts the GPS/compass providers, so they only run while navigation is
-     * in use.
+     * GPS and compass run only while the navigation screen is visible or guidance is active.
      */
     val navigation: NavigationContainer
         get() = synchronized(lock) {
             navigationContainer ?: NavigationContainer(
                 context = this,
                 applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+                // Vehicle speed/gear from the dashboard's source, when a real one is connected.
+                vehicleDataProvider = VehicleRepositoryDataProvider(vehicleSnapshots()),
             ).also { navigationContainer = it }
         }
 
@@ -64,6 +68,12 @@ class CarDashboardApplication : Application() {
      * `close()` on the way out must not reach the thread's default uncaught handler and take the
      * process down as the user leaves.
      */
+    /**
+     * The vehicle graph's snapshots, looked up when navigation starts collecting. Both graphs are
+     * torn down together when the activity finishes, so navigation never outlives this graph.
+     */
+    private fun vehicleSnapshots() = flow { emitAll(container.repository.snapshot) }
+
     fun shutdownVehicleGraph() {
         val doomed = synchronized(lock) { vehicleContainer.also { vehicleContainer = null } }
             ?: return
