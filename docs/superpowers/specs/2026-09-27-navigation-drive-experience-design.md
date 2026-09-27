@@ -70,7 +70,7 @@ behave like a vehicle navigation system.
   toward the policy target (time constant 1.2 s). A gesture drops to `Free` synchronously inside the
   map callback so the next frame never fights the finger.
 - Layers: alternatives (gray, under), route casing + remaining (blue), traveled (gray), destination
-  pin, search-result dots, vehicle arrow (`icon-rotation-alignment=map`, `icon-pitch-alignment=map`),
+  pin, search results (chain badges via `StoreBrand`, else dots; colliding pins hidden, nearest kept), vehicle arrow (`icon-rotation-alignment=map`, `icon-pitch-alignment=map`),
   accuracy halo. The puck is gray when GPS is `Poor`/`Lost`.
 - The route split (traveled/remaining) is updated at fix rate at the fix the puck is animating
   **from**, so the boundary stays under or behind the car.
@@ -81,7 +81,7 @@ behave like a vehicle navigation system.
 
 | Mode | Top | Bottom | Right edge |
 | --- | --- | --- | --- |
-| Planning | "Where to?" planner (start/destination rows), category chips (Fuel, Parking, Food, Hospital, Charging, Hotel), results / recents | — | compass, my-location, zoom, theme |
+| Planning | "Where to?" planner (start/destination rows), category chips (Fuel, Convenience, Parking, Food, Hospital, Charging, Hotel), results / recents | — | compass, my-location, zoom, theme |
 | Overview | — | destination + address, route option cards, toll badge / via / avoid tolls, **Start** (56 dp), **Retry** on failure, ✕ | compass, zoom |
 | Guidance | maneuver banner: glyph, distance (40 sp), instruction with road name; "Then ↰" strip; status strip (Rerouting…, GPS signal lost, Unable to reroute) | ETA (large), time · distance, **End** (red), route overview | compass (heading-up ⇄ north-up), Recenter when free, zoom; speed bubble bottom-left |
 | Arrived | — | Arrived at <name>, **Done** | — |

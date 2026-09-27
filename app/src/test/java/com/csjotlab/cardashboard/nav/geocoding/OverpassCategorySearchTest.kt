@@ -43,6 +43,29 @@ class OverpassResponseParserTest {
         assertTrue(q, q.contains("""nwr["amenity"="fuel"](around:5000,33.8661,130.7509)"""))
         assertTrue(q.contains("out center"))
     }
+
+    @Test
+    fun `convenience stores are found by shop tag and named by their english brand with the branch`() {
+        val q = OverpassCategorySearch.query(PlaceCategory.Convenience, GeoPoint(33.8661, 130.7509), radiusMeters = 5_000)
+        assertTrue(q, q.contains("""nwr["shop"="convenience"](around:5000,33.8661,130.7509)"""))
+
+        val stores = """
+            {"elements": [
+              {"type": "node", "id": 1, "lat": 33.8701, "lon": 130.7512,
+               "tags": {"shop": "convenience", "name": "ファミリーマート", "brand": "ファミリーマート", "brand:en": "FamilyMart",
+                        "branch": "八幡本城店", "addr:city": "北九州市"}},
+              {"type": "node", "id": 2, "lat": 33.8610, "lon": 130.7400,
+               "tags": {"shop": "convenience", "name": "ローソン", "name:en": "Lawson", "brand:en": "Lawson"}},
+              {"type": "node", "id": 3, "lat": 33.8650, "lon": 130.7600, "tags": {"shop": "convenience"}}
+            ]}
+        """.trimIndent()
+        val places = (OverpassResponseParser.parse(stores, PlaceCategory.Convenience) as GeocodeResult.Success).places
+
+        assertEquals(listOf("FamilyMart", "Lawson", "Convenience store"), places.map { it.name })
+        assertEquals("八幡本城店, 北九州市", places[0].address)
+        assertTrue(places.all { it.category == "convenience" })
+        assertEquals(listOf("FamilyMart", "Lawson", null), places.map { it.brand })
+    }
 }
 
 class NearbyCategoryGeocodingEngineTest {

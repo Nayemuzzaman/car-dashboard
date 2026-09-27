@@ -317,6 +317,7 @@ internal fun CategoryChips(active: PlaceCategory?, onSelect: (PlaceCategory) -> 
 
 internal fun PlaceCategory.glyph(): String = when (this) {
     PlaceCategory.Fuel -> "⛽"
+    PlaceCategory.Convenience -> "🏪"
     PlaceCategory.Parking -> "🅿"
     PlaceCategory.Food -> "🍴"
     PlaceCategory.Hospital -> "🏥"
@@ -356,7 +357,7 @@ internal fun SearchResultsList(
                     PlaceRow(
                         glyph = placeGlyph(result.place.category),
                         title = result.place.name,
-                        subtitle = listOfNotNull(result.place.category?.replace('_', ' '), result.place.address).joinToString(" · "),
+                        subtitle = listOfNotNull(placeKindLabel(result.place.category), result.place.address).joinToString(" · "),
                         trailing = result.distanceText,
                         onClick = { onSelect(result.place) },
                     )

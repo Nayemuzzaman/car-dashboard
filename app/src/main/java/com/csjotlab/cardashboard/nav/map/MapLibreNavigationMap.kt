@@ -8,6 +8,7 @@ import kotlin.math.abs
 import com.csjotlab.cardashboard.nav.domain.GeoPoint
 import com.csjotlab.cardashboard.nav.domain.Route
 import com.csjotlab.cardashboard.nav.engine.RouteIndex
+import com.csjotlab.cardashboard.nav.geocoding.StoreBrand
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -15,7 +16,6 @@ import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
-import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.Layer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
@@ -55,7 +55,7 @@ class MapLibreNavigationMap(
     private var pendingAlong: Float? = null
     private var vehicle: VehicleMarker? = null
     private var destination: GeoPoint? = null
-    private var searchResults: List<GeoPoint> = emptyList()
+    private var searchResults: List<SearchPin> = emptyList()
 
     private val controller = VehicleCameraController(map) { position, bearing -> drawVehicle(position, bearing) }
 
@@ -158,8 +158,8 @@ class MapLibreNavigationMap(
         drawDestination()
     }
 
-    override fun showSearchResults(points: List<GeoPoint>) {
-        searchResults = points
+    override fun showSearchResults(pins: List<SearchPin>) {
+        searchResults = pins
         drawSearchResults()
     }
 
@@ -252,6 +252,8 @@ class MapLibreNavigationMap(
         style.addImage(IMAGE_DOT, MapMarkerBitmaps.vehicleDot(density, palette.vehicle))
         style.addImage(IMAGE_DOT_DEGRADED, MapMarkerBitmaps.vehicleDot(density, DEGRADED))
         style.addImage(IMAGE_PIN, MapMarkerBitmaps.destinationPin(density, palette.destination))
+        style.addImage(IMAGE_SEARCH_DOT, MapMarkerBitmaps.searchDot(density, palette.destination))
+        StoreBrand.entries.forEach { style.addImage(brandImage(it), MapMarkerBitmaps.storeBadge(density, it)) }
 
         listOf(ALTERNATIVES_SOURCE, TRAVELED_SOURCE, REMAINING_SOURCE, SEARCH_SOURCE, DESTINATION_SOURCE, VEHICLE_SOURCE)
             .forEach { style.addSource(GeoJsonSource(it, EMPTY)) }
@@ -269,11 +271,15 @@ class MapLibreNavigationMap(
         below(line(REMAINING_LAYER, REMAINING_SOURCE, palette.route, 7f))
 
         style.addLayer(
-            CircleLayer(SEARCH_LAYER, SEARCH_SOURCE).withProperties(
-                PropertyFactory.circleColor(palette.destination),
-                PropertyFactory.circleRadius(7f),
-                PropertyFactory.circleStrokeColor(WHITE),
-                PropertyFactory.circleStrokeWidth(2.5f),
+            // A chain's badge stands on its point (anchor bottom); an unknown place is a centred dot.
+            // Pins that would cover each other are dropped, nearest first kept (lowest sort key is
+            // placed first); zooming in brings the rest back.
+            SymbolLayer(SEARCH_LAYER, SEARCH_SOURCE).withProperties(
+                PropertyFactory.iconImage(Expression.get(PROP_ICON)),
+                PropertyFactory.iconAnchor(Expression.get(PROP_ANCHOR)),
+                PropertyFactory.symbolSortKey(Expression.get(PROP_RANK)),
+                PropertyFactory.iconAllowOverlap(false),
+                PropertyFactory.iconPadding(2f),
             ),
         )
         style.addLayer(
@@ -345,7 +351,14 @@ class MapLibreNavigationMap(
     }
 
     private fun drawSearchResults() {
-        source(SEARCH_SOURCE)?.setGeoJson(FeatureCollection.fromFeatures(searchResults.map { Feature.fromGeometry(point(it)) }))
+        val features = searchResults.mapIndexed { index, pin ->
+            Feature.fromGeometry(point(pin.point)).apply {
+                addStringProperty(PROP_ICON, pin.brand?.let(::brandImage) ?: IMAGE_SEARCH_DOT)
+                addStringProperty(PROP_ANCHOR, if (pin.brand != null) Property.ICON_ANCHOR_BOTTOM else Property.ICON_ANCHOR_CENTER)
+                addNumberProperty(PROP_RANK, index)
+            }
+        }
+        source(SEARCH_SOURCE)?.setGeoJson(FeatureCollection.fromFeatures(features))
     }
 
     private fun drawVehicle(position: GeoPoint, bearing: Float?) {
@@ -366,6 +379,8 @@ class MapLibreNavigationMap(
     private fun point(p: GeoPoint) = Point.fromLngLat(p.longitude, p.latitude)
     private fun lineString(points: List<GeoPoint>) = LineString.fromLngLats(points.map(::point))
     private fun lineFeature(points: List<GeoPoint>) = FeatureCollection.fromFeature(Feature.fromGeometry(lineString(points)))
+
+    private fun brandImage(brand: StoreBrand) = "nav-brand-${brand.name}"
 
     private class Palette(val route: Int, val casing: Int, val traveled: Int, val alternative: Int, val vehicle: Int, val destination: Int)
 
@@ -388,7 +403,10 @@ class MapLibreNavigationMap(
         const val IMAGE_DOT = "nav-dot"
         const val IMAGE_DOT_DEGRADED = "nav-dot-degraded"
         const val IMAGE_PIN = "nav-pin"
+        const val IMAGE_SEARCH_DOT = "nav-search-dot"
         const val PROP_ICON = "icon"
+        const val PROP_ANCHOR = "anchor"
+        const val PROP_RANK = "rank"
         const val PROP_BEARING = "bearing"
 
         const val MIN_ZOOM = 2.0
