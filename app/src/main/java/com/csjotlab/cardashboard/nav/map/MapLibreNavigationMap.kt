@@ -247,8 +247,8 @@ class MapLibreNavigationMap(
     private fun install(style: Style, mapStyle: MapStyle) {
         val night = mapStyle == MapStyle.Night
         val palette = if (night) NightPalette else DayPalette
-        style.addImage(IMAGE_ARROW, MapMarkerBitmaps.vehicleArrow(density, palette.vehicle))
-        style.addImage(IMAGE_ARROW_DEGRADED, MapMarkerBitmaps.vehicleArrow(density, DEGRADED))
+        style.addImage(IMAGE_CAR, MapMarkerBitmaps.vehicleCar(density, palette.vehicle))
+        style.addImage(IMAGE_CAR_DEGRADED, MapMarkerBitmaps.vehicleCar(density, DEGRADED))
         style.addImage(IMAGE_DOT, MapMarkerBitmaps.vehicleDot(density, palette.vehicle))
         style.addImage(IMAGE_DOT_DEGRADED, MapMarkerBitmaps.vehicleDot(density, DEGRADED))
         style.addImage(IMAGE_PIN, MapMarkerBitmaps.destinationPin(density, palette.destination))
@@ -288,7 +288,7 @@ class MapLibreNavigationMap(
             SymbolLayer(VEHICLE_LAYER, VEHICLE_SOURCE).withProperties(
                 PropertyFactory.iconImage(Expression.get(PROP_ICON)),
                 PropertyFactory.iconRotate(Expression.get(PROP_BEARING)),
-                // Rotate and lie flat with the map, so the arrow points along the road in 3D too.
+                // Rotate and lie flat with the map, so the car faces along the road in 3D too.
                 PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
                 PropertyFactory.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP),
                 PropertyFactory.iconAllowOverlap(true),
@@ -353,8 +353,8 @@ class MapLibreNavigationMap(
         val icon = when {
             bearing == null && degraded -> IMAGE_DOT_DEGRADED
             bearing == null -> IMAGE_DOT
-            degraded -> IMAGE_ARROW_DEGRADED
-            else -> IMAGE_ARROW
+            degraded -> IMAGE_CAR_DEGRADED
+            else -> IMAGE_CAR
         }
         val feature = Feature.fromGeometry(point(position)).apply {
             addStringProperty(PROP_ICON, icon)
@@ -383,8 +383,8 @@ class MapLibreNavigationMap(
         const val SEARCH_LAYER = "nav-search-dots"
         const val DESTINATION_LAYER = "nav-destination-pin"
         const val VEHICLE_LAYER = "nav-vehicle-marker"
-        const val IMAGE_ARROW = "nav-arrow"
-        const val IMAGE_ARROW_DEGRADED = "nav-arrow-degraded"
+        const val IMAGE_CAR = "nav-car"
+        const val IMAGE_CAR_DEGRADED = "nav-car-degraded"
         const val IMAGE_DOT = "nav-dot"
         const val IMAGE_DOT_DEGRADED = "nav-dot-degraded"
         const val IMAGE_PIN = "nav-pin"

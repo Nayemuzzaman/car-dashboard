@@ -191,7 +191,7 @@ the bottom with the arrival time, time and distance left, route overview, and a 
 button. Speed and the current road are shown above the trip bar. System **Back** asks *End
 navigation?* instead of silently leaving. The screen stays on while guiding.
 
-- **The map follows the car.** A direction arrow shows which way the vehicle is travelling. The
+- **The map follows the car.** A top-down car marker (iOS-navigation style) faces the way the vehicle is travelling. The
   camera is heading-up and tilted, with the car low on the screen so the road ahead is visible;
   the compass button switches between heading-up and north-up. The marker glides between GPS fixes
   and the camera moves with it on the same animation frame, so nothing steps once a second.
@@ -212,7 +212,7 @@ navigation?* instead of silently leaving. The screen stays on while guiding.
   the car has moved on.
 - **GPS problems are shown, not hidden.** Fixes worse than 100 m and physically impossible jumps are
   rejected; a parked car does not drift. *Weak GPS signal* or *GPS signal lost* appears under the
-  banner and the arrow turns grey. In a tunnel the last progress, instruction and ETA are held —
+  banner and the car turns grey. In a tunnel the last progress, instruction and ETA are held —
   the marker is never moved by guesswork.
 - **Day / night.** The map, route colours and every panel switch together. **Auto** follows the sun at
   the car's position; the ☀/☾/A button forces day or night. All panel text meets WCAG AA contrast
