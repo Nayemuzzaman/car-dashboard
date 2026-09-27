@@ -81,7 +81,7 @@ behave like a vehicle navigation system.
 
 | Mode | Top | Bottom | Right edge |
 | --- | --- | --- | --- |
-| Planning | "Where to?" planner (start/destination rows), category chips (Fuel, Parking, Food, Hospital, Charging, Hotel), results / recents | — | compass, my-location, zoom, theme |
+| Planning | "Where to?" planner (start/destination rows), category chips (Fuel, Convenience, Parking, Food, Hospital, Charging, Hotel), results / recents | — | compass, my-location, zoom, theme |
 | Overview | — | destination + address, route option cards, toll badge / via / avoid tolls, **Start** (56 dp), **Retry** on failure, ✕ | compass, zoom |
 | Guidance | maneuver banner: glyph, distance (40 sp), instruction with road name; "Then ↰" strip; status strip (Rerouting…, GPS signal lost, Unable to reroute) | ETA (large), time · distance, **End** (red), route overview | compass (heading-up ⇄ north-up), Recenter when free, zoom; speed bubble bottom-left |
 | Arrived | — | Arrived at <name>, **Done** | — |
